@@ -1,0 +1,100 @@
+const prompt = `
+Return ONLY a valid JSON object.
+NO markdown.
+NO explanations.
+NO extra text.
+
+Generation ID: ${variationSeed}
+
+User Travel Preferences:
+${preferenceText}
+
+{
+  "location": "${location}",
+  "days": ${days},
+  "travelWith": "${travelWith}",
+  "budget": "${budget}",
+  "itinerary": [
+    ${Array.from({ length: days }, (_, i) => `
+    {
+      "day": ${i + 1},
+      "morning": [{
+  "activity": "",
+  "description": "",
+  "imageUrl": "",
+  "startTime": "",
+  "duration": "",
+  "travelFromPrevious": ""
+}],
+"afternoon": [{
+  "activity": "",
+  "description": "",
+  "imageUrl": "",
+  "startTime": "",
+  "duration": "",
+  "travelFromPrevious": ""
+}],
+"evening": [{
+  "activity": "",
+  "description": "",
+  "imageUrl": "",
+  "startTime": "",
+  "duration": "",
+  "travelFromPrevious": ""
+}]
+
+    }`).join(",")}
+  ],
+  "accommodation": {
+    "name": "",
+    "address": ""
+  }
+}
+
+STRICT RULES:
+- Activities MUST strictly follow these preferences:
+  ${preferenceText}
+- Activities must be REAL tourist places in ${location}
+- Use ONLY:
+  "Visit <Place Name>" OR "Explore <Place Name>"
+- Generate a UNIQUE itinerary every time
+- Avoid repeating the same attraction across days
+- Avoid generic tourist templates
+
+TIME & TRAVEL RULES (MANDATORY):
+- Each activity MUST include:
+  - startTime → format: H:MM AM/PM
+  - duration → realistic (e.g., "1.5 hours", "2 hours")
+  - travelFromPrevious → realistic (e.g., "20 mins by car", "10 mins walk")
+- Morning startTime: 8:00 AM – 11:00 AM
+- Afternoon startTime: 12:00 PM – 4:30 PM
+- Evening startTime: 5:30 PM – 9:30 PM
+- First morning activity starts from hotel
+- Travel time must make sense geographically
+- duration MUST ALWAYS be a STRING (example: "2 hours", "2.5 hours")
+VERY IMPORTANT:
+- You MUST complete the FULL JSON.
+- Do NOT stop generation mid-field.
+- Do NOT cut strings.
+- The output MUST end with the final closing brace }. 
+ADDITIONAL CONTENT RULES (MANDATORY):
+- description must be 2–3 sentences explaining why the place is special
+- description must be informative and tourist-friendly
+- imageUrl must be a REAL, PUBLIC image URL of the place
+- Prefer Wikimedia Commons, Google Maps public images, or official tourism images
+- imageUrl must start with https://
+- Do NOT leave description or imageUrl empty.
+IMAGE URL RULES (VERY IMPORTANT):
+- imageUrl MUST be a DIRECT image file URL
+- imageUrl MUST start with:
+  https://upload.wikimedia.org/
+- imageUrl MUST end with .jpg or .png
+- DO NOT use URLs containing:
+  /wiki/File:
+  /wiki/
+- BAD EXAMPLE:
+  https://commons.wikimedia.org/wiki/File:Place.jpg
+- GOOD EXAMPLE:
+  https://upload.wikimedia.org/wikipedia/commons/x/x1/Place.jpg
+- If a direct image URL is not known, choose another REAL place.
+`;
