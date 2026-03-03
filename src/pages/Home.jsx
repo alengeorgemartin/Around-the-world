@@ -52,16 +52,17 @@ const Home = () => {
         {/* THUMBNAIL GALLERY */}
         <div className="thumbnail-gallery">
           <div className="thumbnail">
-            <img src="https://images.unsplash.com/photo-1524492412937-b28074a5d7da?auto=format&fit=crop&w=300&q=80" alt="Jaipur" />
+            <img src="https://images.unsplash.com/photo-1524492412937-b28074a5d7da?auto=format&fit=crop&w=300&q=80" alt="Hawa Mahal" />
           </div>
           <div className="thumbnail">
-            <img src="https://images.unsplash.com/photo-1564507592333-c60657eea523?auto=format&fit=crop&w=300&q=80" alt="Taj Mahal" />
+            <img src="https://images.unsplash.com/photo-1464822759023-fed622ff2c3b?auto=format&fit=crop&w=300&q=80" alt="Mountain with snow" />
+          </div>
+          <div style={{ color: 'white', fontSize: '30px', fontWeight: 'bold', display: 'flex', alignItems: 'end', paddingBottom: '20px' }}>...</div>
+          <div className="thumbnail">
+            <img src="https://images.unsplash.com/photo-1522199755839-a2bacb67c546?auto=format&fit=crop&w=300&q=80" alt="Mountain Peak Person" />
           </div>
           <div className="thumbnail">
-            <img src="https://images.unsplash.com/photo-1506905925346-21bda4d32df4?auto=format&fit=crop&w=300&q=80" alt="Mountain" />
-          </div>
-          <div className="thumbnail">
-            <img src="https://images.unsplash.com/photo-1501785888041-af3ef285b470?auto=format&fit=crop&w=300&q=80" alt="Beach" />
+            <img src="https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=300&q=80" alt="Beach Spit" />
           </div>
         </div>
 
@@ -213,6 +214,44 @@ const Home = () => {
 
         <div className="details-btn-container">
           <button className="details-btn">Details</button>
+        </div>
+
+        {/* INDUZ CARZ BANNER */}
+        <div className="induz-banner-container">
+          <div className="induz-header">
+            <i className="fa-solid fa-heart induz-logo" style={{ color: "white" }}></i>
+            <div className="induz-brand-name">Induz Carz</div>
+          </div>
+
+          <h1 className="induz-title">
+            Don't just own it Earn it<br />
+            All in one place<br />
+            Rent And Ride
+          </h1>
+
+          <div className="induz-cards-wrapper">
+            <div className="induz-card">
+              <i className="fa-solid fa-car-side"></i>
+              <h4>Free First Ride</h4>
+              <p>Get $100 OFF</p>
+            </div>
+
+            <div className="induz-card">
+              <i className="fa-solid fa-motorcycle"></i>
+              <h4>Rent your vehicle</h4>
+              <p>Earn your self</p>
+            </div>
+
+            <div className="induz-card">
+              <i className="fa-solid fa-truck-pickup"></i>
+              <h4>Road Assistance</h4>
+              <p>24x7</p>
+            </div>
+          </div>
+
+          <div className="induz-action-container">
+            <button className="induz-start-btn">Get start</button>
+          </div>
         </div>
       </div>
     </>

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { setAuth } from "../utils/auth";
 import api from "../utils/api";
@@ -37,92 +37,140 @@ const Login = () => {
     }
   };
 
-  return (
-    <div className="login-container">
-      <div className="login-background">
-        <div className="floating-shape shape-1"></div>
-        <div className="floating-shape shape-2"></div>
-        <div className="floating-shape shape-3"></div>
-      </div>
+  const images = [
+    "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee",
+    "https://images.unsplash.com/photo-1501785888041-af3ef285b470",
+    "https://images.unsplash.com/photo-1470770841072-f978cf4d019e"
+  ];
+  const [currentImage, setCurrentImage] = useState(0);
 
-      <div className="login-card">
-        <div className="login-header">
-          <div className="logo-container">
-            <Plane size={40} className="logo-icon" />
+  // Auto-scroll images
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setCurrentImage((prev) => (prev + 1) % images.length);
+    }, 4000);
+    return () => clearInterval(timer);
+  }, [images.length]);
+
+  const nextImage = () => {
+    setCurrentImage((prev) => (prev + 1) % images.length);
+  };
+
+  const prevImage = () => {
+    setCurrentImage((prev) => (prev - 1 + images.length) % images.length);
+  };
+
+  const [accountType, setAccountType] = useState('personal');
+  const [mobileNumber, setMobileNumber] = useState('');
+
+  const handleMobileChange = (e) => {
+    setMobileNumber(e.target.value);
+    handleChange(e); // Keep form sync for later auth uses
+  };
+
+  // derived state for button validation
+  const isContinueDisabled = mobileNumber.length < 10 || isLoading;
+
+  return (
+    <div style={{ height: '100vh', background: '#dedede', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+      <div className="modal" id="modal">
+        <div className="left">
+          {images.map((img, idx) => (
+            <img
+              key={idx}
+              src={img}
+              alt={`Slide ${idx + 1}`}
+              className={idx === currentImage ? "active" : ""}
+            />
+          ))}
+
+          <button className="arrow left-arrow" onClick={prevImage} type="button">&#10094;</button>
+          <button className="arrow right-arrow" onClick={nextImage} type="button">&#10095;</button>
+
+          <div className="dots">
+            {images.map((_, idx) => (
+              <span
+                key={idx}
+                className={idx === currentImage ? "active" : ""}
+                onClick={() => setCurrentImage(idx)}
+              ></span>
+            ))}
           </div>
-          <h1>Welcome Back</h1>
-          <p>Sign in to continue your travel journey</p>
         </div>
 
-        {error && (
-          <div className="error-alert">
-            <span className="error-icon">⚠️</span>
-            {error}
-          </div>
-        )}
+        <div className="right">
+          <div className="close" id="closeBtn" onClick={() => navigate('/')}>&times;</div>
 
-        <form onSubmit={handleSubmit} className="login-form">
-          <div className="input-group">
-            <label htmlFor="email">Email Address</label>
-            <div className="input-wrapper">
-              <Mail size={20} className="input-icon" />
-              <input
-                id="email"
-                name="email"
-                type="email"
-                placeholder="you@example.com"
-                onChange={handleChange}
-                value={form.email}
-                required
-                autoComplete="email"
-              />
-            </div>
-          </div>
-
-          <div className="input-group">
-            <label htmlFor="password">Password</label>
-            <div className="input-wrapper">
-              <Lock size={20} className="input-icon" />
-              <input
-                id="password"
-                type="password"
-                name="password"
-                placeholder="••••••••"
-                onChange={handleChange}
-                value={form.password}
-                required
-                autoComplete="current-password"
-              />
-            </div>
-          </div>
-
-          <button type="submit" className="login-button" disabled={isLoading}>
-            {isLoading ? (
-              <>
-                <span className="spinner"></span>
-                Signing in...
-              </>
-            ) : (
-              <>
-                <LogIn size={20} />
-                Sign In
-              </>
-            )}
-          </button>
-        </form>
-
-        <div className="login-footer">
-          <p>
-            Don't have an account?{" "}
+          <div className="account-toggle">
             <button
+              className={`toggle ${accountType === 'personal' ? 'active-personal' : ''}`}
+              onClick={() => setAccountType('personal')}
               type="button"
-              className="register-link"
-              onClick={() => navigate("/register")}
             >
-              <UserPlus size={16} />
-              Create Account
+              Personal Account
             </button>
-          </p>
+            <button
+              className={`toggle ${accountType === 'business' ? 'active-business' : ''}`}
+              onClick={() => setAccountType('business')}
+              type="button"
+            >
+              Business Account
+            </button>
+          </div>
+
+          {error && (
+            <div style={{ color: 'red', fontSize: '13px', marginBottom: '10px' }}>{error}</div>
+          )}
+
+          <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column' }}>
+            <label>Mobile Number</label>
+            <div className="input-wrapper">
+              <div className="code">+91</div>
+              <input
+                type="text"
+                id="mobileInput"
+                placeholder="Enter Mobile Number"
+                name="email" /* temporarily binding to 'email' logic for backend */
+                value={mobileNumber}
+                onChange={handleMobileChange}
+              />
+            </div>
+
+            {/* hidden generic password field to satisfy potential backend validation momentarily */}
+            <input
+              type="password"
+              name="password"
+              value={form.password}
+              onChange={handleChange}
+              style={{ display: 'none' }}
+            />
+
+            <button type="submit" className="continue" id="continueBtn" disabled={isContinueDisabled}>
+              {isLoading ? "Signing in..." : "Continue"}
+            </button>
+          </form>
+
+          <div className="divider"><span>Or Login/Sign up</span></div>
+
+          <div className="social">
+            <button id="googleBtn" type="button" onClick={() => alert("Google login clicked")}>
+              <img src="https://upload.wikimedia.org/wikipedia/commons/5/53/Google_%22G%22_Logo.svg" alt="Google" width="16" height="16" />
+              Google
+            </button>
+            <button id="emailBtn" type="button" onClick={() => navigate('/login-email')}>
+              <div style={{ display: 'inline-flex', width: 16, height: 16, position: 'relative' }}>
+                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M4 7.00005L10.2 11.65C11.2667 12.45 12.7333 12.45 13.8 11.65L20 7" stroke="#EA4335" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                  <rect x="3" y="5" width="18" height="14" rx="2" stroke="#4285F4" strokeWidth="2" strokeLinecap="round" />
+                </svg>
+              </div>
+              Email
+            </button>
+          </div>
+
+          <div className="footer">
+            By proceeding, you agree to our Terms of Use and confirm you have read our Privacy and Cookie Statement.
+          </div>
         </div>
       </div>
     </div>
