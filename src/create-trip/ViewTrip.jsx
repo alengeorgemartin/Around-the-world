@@ -165,6 +165,31 @@ function ViewTrip() {
   const [loadingBusinesses, setLoadingBusinesses] = useState(false);
   const [showPartnerBusinesses, setShowPartnerBusinesses] = useState(false);
 
+  // PDF download state
+  const [downloadingPDF, setDownloadingPDF] = useState(false);
+
+  /* ---------------- PDF DOWNLOAD HANDLER ---------------- */
+  const downloadPDF = async () => {
+    setDownloadingPDF(true);
+    try {
+      const res = await api.get(`/trip/${id}/pdf`, { responseType: "blob" });
+      const url = window.URL.createObjectURL(new Blob([res.data], { type: "application/pdf" }));
+      const link = document.createElement("a");
+      link.href = url;
+      const safeLocation = (trip.location || "Trip").replace(/[^a-zA-Z0-9\s-]/g, "").trim().replace(/\s+/g, "-");
+      link.setAttribute("download", `${safeLocation}-Travel-Plan.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error("PDF download failed:", err);
+      alert("Failed to generate PDF. Please try again.");
+    } finally {
+      setDownloadingPDF(false);
+    }
+  };
+
   /* ---------------- FETCH TRIP ---------------- */
   const fetchTrip = async () => {
     const res = await api.get(`/trip/${id}`);
@@ -558,9 +583,183 @@ function ViewTrip() {
                 <Undo size={18} />
                 Undo Last Change
               </button>
+
+              <button
+                onClick={downloadPDF}
+                disabled={downloadingPDF}
+                className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-emerald-500 to-teal-600 text-white rounded-xl shadow-md hover:shadow-lg transition-all duration-300 hover:-translate-y-0.5 disabled:opacity-60 disabled:cursor-not-allowed"
+                title="Download full trip plan as PDF"
+              >
+                {downloadingPDF ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
+                    Generating PDF...
+                  </>
+                ) : (
+                  <>
+                    <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                      <polyline points="14 2 14 8 20 8" />
+                      <line x1="12" y1="18" x2="12" y2="12" />
+                      <polyline points="9 15 12 18 15 15" />
+                    </svg>
+                    Download Plan
+                  </>
+                )}
+              </button>
             </div>
           </div>
         </div>
+
+        {/* ══════════ SEASONAL INTELLIGENCE BANNER ══════════ */}
+        {trip.seasonalContext && trip.seasonalContext.warningLevel && (
+          <div className={`mb-6 p-5 rounded-2xl shadow-md border-l-8 flex flex-col md:flex-row gap-4 items-start md:items-center ${trip.seasonalContext.warningLevel === 'ideal'
+              ? 'bg-green-50 border-green-500'
+              : trip.seasonalContext.warningLevel === 'avoid'
+                ? 'bg-red-50 border-red-500'
+                : 'bg-yellow-50 border-yellow-500'
+            }`}>
+            <div className="text-4xl">
+              {trip.seasonalContext.season === 'Summer' ? '☀️'
+                : trip.seasonalContext.season === 'Winter' ? '❄️'
+                  : trip.seasonalContext.season === 'Monsoon' ? '🌧️'
+                    : '🍂'}
+            </div>
+            <div className="flex-1">
+              <h3 className={`text-lg font-bold mb-1 ${trip.seasonalContext.warningLevel === 'ideal' ? 'text-green-800'
+                  : trip.seasonalContext.warningLevel === 'avoid' ? 'text-red-800' : 'text-yellow-800'
+                }`}>
+                Seasonal Intelligence: {trip.seasonalContext.season} Travel
+              </h3>
+              <p className="text-gray-700 text-sm md:text-base">
+                {trip.seasonalContext.warningMessage}
+              </p>
+
+              {/* Flood Risk Banner */}
+              {trip.seasonalContext.floodRisk && trip.seasonalContext.season === 'Monsoon' && (
+                <div className="mt-3 inline-flex items-center gap-2 bg-red-100 text-red-800 px-3 py-1 rounded-lg text-sm font-semibold">
+                  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z" /><line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" /></svg>
+                  High Flood Risk Region during Monsoon
+                </div>
+              )}
+
+              {/* Alternatives for Avoid */}
+              {trip.seasonalContext.warningLevel === 'avoid' && trip.seasonalContext.alternatives?.length > 0 && (
+                <div className="mt-3 text-sm">
+                  <span className="font-semibold text-gray-800">AI Suggested Alternatives: </span>
+                  <div className="flex flex-wrap gap-2 mt-1">
+                    {trip.seasonalContext.alternatives.map((alt, i) => (
+                      <span key={i} className="bg-white px-3 py-1 rounded-full text-gray-700 border border-gray-200 shadow-sm">
+                        {alt}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+            <div className="hidden lg:block shrink-0 bg-white/50 px-4 py-2 rounded-xl text-center">
+              <div className="text-xs text-gray-500 uppercase tracking-wide font-semibold mb-1">Activities Optimized for</div>
+              <div className="font-bold text-gray-800">{trip.seasonalContext.season}</div>
+            </div>
+          </div>
+        )}
+
+        {/* ══════════ BUDGET BREAKDOWN CARD ══════════ */}
+        {trip.budgetBreakdown?.totalBudget > 0 && (() => {
+          const bd = trip.budgetBreakdown;
+          const alloc = bd.allocated || {};
+          const spent = bd.actualSpent || {};
+          const total = bd.totalBudget;
+          const score = Math.round((bd.satisfactionScore || 0) * 100);
+          const util = Math.round((bd.budgetUtilization || 0) * 100);
+
+          const segments = [
+            { label: "Stay", emoji: "🏨", alloc: alloc.stay, color: "#6366f1" },
+            { label: "Food", emoji: "🍽️", alloc: alloc.food, color: "#f59e0b" },
+            { label: "Transport", emoji: "🚗", alloc: alloc.transport, color: "#10b981" },
+            { label: "Activities", emoji: "🎯", alloc: alloc.activities, color: "#f43f5e" },
+          ];
+
+          return (
+            <div style={{
+              background: "linear-gradient(135deg, #1e1b4b 0%, #312e81 50%, #1e3a5f 100%)",
+              borderRadius: 20,
+              padding: "24px 28px",
+              marginBottom: 24,
+              boxShadow: "0 8px 32px rgba(99,102,241,0.3)",
+              color: "#fff",
+            }}>
+              {/* Header row */}
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+                <div>
+                  <h2 style={{ fontSize: 20, fontWeight: 700, margin: 0 }}>
+                    💰 Smart Budget Breakdown
+                  </h2>
+                  <p style={{ margin: "4px 0 0", opacity: 0.7, fontSize: 13 }}>
+                    Total: ₹{total.toLocaleString("en-IN")} &nbsp;·&nbsp; {bd.algorithm === "knapsack" ? "🧠 Knapsack Optimized" : "⚡ Greedy Allocated"}
+                  </p>
+                </div>
+
+                {/* Satisfaction score ring */}
+                <div style={{ textAlign: "center" }}>
+                  <div style={{
+                    width: 64, height: 64,
+                    borderRadius: "50%",
+                    background: `conic-gradient(#a5b4fc ${score * 3.6}deg, rgba(255,255,255,0.15) 0deg)`,
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                    fontSize: 15, fontWeight: 700,
+                  }}>
+                    {score}%
+                  </div>
+                  <p style={{ fontSize: 10, opacity: 0.7, margin: "4px 0 0" }}>Satisfaction</p>
+                </div>
+              </div>
+
+              {/* Allocation bars */}
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                {segments.map(seg => {
+                  const pct = total > 0 ? Math.round((seg.alloc / total) * 100) : 0;
+                  return (
+                    <div key={seg.label} style={{
+                      background: "rgba(255,255,255,0.08)",
+                      borderRadius: 12,
+                      padding: "12px 14px",
+                    }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                        <span style={{ fontSize: 13, fontWeight: 600 }}>{seg.emoji} {seg.label}</span>
+                        <span style={{ fontSize: 13, fontWeight: 700 }}>₹{(seg.alloc || 0).toLocaleString("en-IN")}</span>
+                      </div>
+                      {/* Bar */}
+                      <div style={{ background: "rgba(255,255,255,0.15)", borderRadius: 6, height: 6, overflow: "hidden" }}>
+                        <div style={{
+                          width: `${pct}%`,
+                          height: "100%",
+                          background: seg.color,
+                          borderRadius: 6,
+                          transition: "width 0.8s ease",
+                        }} />
+                      </div>
+                      <p style={{ fontSize: 10, opacity: 0.6, margin: "4px 0 0" }}>{pct}% of total</p>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Budget utilization footer */}
+              {util > 0 && (
+                <div style={{ marginTop: 16, paddingTop: 12, borderTop: "1px solid rgba(255,255,255,0.15)", display: "flex", justifyContent: "space-between", fontSize: 12, opacity: 0.8 }}>
+                  <span>Budget Utilization: <strong>{util}%</strong></span>
+                  {trip.researchMetrics && (
+                    <span>
+                      Greedy: {Math.round((trip.researchMetrics.greedySatisfaction || 0) * 100)}% →
+                      Knapsack: {Math.round((trip.researchMetrics.knapsackSatisfaction || 0) * 100)}% satisfaction
+                    </span>
+                  )}
+                </div>
+              )}
+            </div>
+          );
+        })()}
 
         {/* PARTNER BUSINESSES BUTTON */}
         {!showPartnerBusinesses && (

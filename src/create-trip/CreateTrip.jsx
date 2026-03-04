@@ -33,6 +33,8 @@ function CreateTrip() {
   const [preferences, setPreferences] = useState([]);
   const [days, setDays] = useState(1);
   const [budget, setBudget] = useState("");
+  const [budgetAmount, setBudgetAmount] = useState(""); // NEW: numeric ₹ amount
+  const [travelMonth, setTravelMonth] = useState(new Date().getMonth() + 1); // NEW: 1-12
   const [travelWith, setTravelWith] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -153,6 +155,8 @@ function CreateTrip() {
         startDate,
         days,
         budget,
+        budgetAmount: budgetAmount ? Number(budgetAmount) : undefined,
+        travelMonth: Number(travelMonth),
         travelWith,
         preferences: finalPreferences,
       });
@@ -279,6 +283,24 @@ function CreateTrip() {
               </div>
 
               <div className="input-group">
+                <label>
+                  💰 Total Budget (&#8377;){" "}
+                  <span style={{ fontWeight: 400, fontSize: "0.8em", opacity: 0.7 }}>
+                    optional — enables smart allocation
+                  </span>
+                </label>
+                <input
+                  type="number"
+                  placeholder="e.g. 15000"
+                  value={budgetAmount}
+                  onChange={(e) => setBudgetAmount(e.target.value)}
+                  min="500"
+                  step="500"
+                  className="form-input"
+                />
+              </div>
+
+              <div className="input-group">
                 <label>Traveling With</label>
                 <select
                   value={travelWith}
@@ -290,6 +312,34 @@ function CreateTrip() {
                   <option value="Couple">Couple</option>
                   <option value="Family">Family</option>
                   <option value="Friends">Friends</option>
+                </select>
+              </div>
+
+              {/* NEW: Seasonal Context Input */}
+              <div className="input-group">
+                <label>
+                  🌦 Travel Month
+                  <span style={{ fontWeight: 400, fontSize: "0.8em", opacity: 0.7, marginLeft: "6px" }}>
+                    optimizes activities for season
+                  </span>
+                </label>
+                <select
+                  value={travelMonth}
+                  onChange={(e) => setTravelMonth(e.target.value)}
+                  className="form-input"
+                >
+                  <option value={1}>January (Winter)</option>
+                  <option value={2}>February (Winter)</option>
+                  <option value={3}>March (Summer)</option>
+                  <option value={4}>April (Summer)</option>
+                  <option value={5}>May (Summer)</option>
+                  <option value={6}>June (Summer)</option>
+                  <option value={7}>July (Monsoon)</option>
+                  <option value={8}>August (Monsoon)</option>
+                  <option value={9}>September (Monsoon)</option>
+                  <option value={10}>October (Autumn)</option>
+                  <option value={11}>November (Autumn)</option>
+                  <option value={12}>December (Winter)</option>
                 </select>
               </div>
             </div>

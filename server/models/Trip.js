@@ -12,6 +12,14 @@ const ActivitySchema = new mongoose.Schema({
     lat: Number,
     lng: Number,
   },
+  // ============ BUDGET OPTIMIZER FIELDS ============
+  estimatedCost: { type: Number, default: 0 },       // in ₹
+  costTier: {
+    type: String,
+    enum: ["free", "budget", "moderate", "luxury"],
+    default: "budget",
+  },
+  utilityScore: { type: Number, default: 0 },        // computed by optimizer
   // Running Late support
   priority: {
     type: String,
@@ -37,9 +45,55 @@ const DaySchema = new mongoose.Schema({
 const TripSchema = new mongoose.Schema({
   location: String,
   days: Number,
-  budget: String,
+  budget: String,          // Category: "Cheap" | "Moderate" | "Luxury"
+  budgetAmount: Number,    // Numeric total in ₹  (e.g. 15000)
   travelWith: String,
   itinerary: [DaySchema],
+
+  // ============ BUDGET BREAKDOWN (optimizer output) ============
+  budgetBreakdown: {
+    totalBudget: { type: Number, default: 0 },
+    allocated: {
+      stay: { type: Number, default: 0 },
+      food: { type: Number, default: 0 },
+      transport: { type: Number, default: 0 },
+      activities: { type: Number, default: 0 },
+    },
+    actualSpent: {
+      stay: { type: Number, default: 0 },
+      food: { type: Number, default: 0 },
+      transport: { type: Number, default: 0 },
+      activities: { type: Number, default: 0 },
+    },
+    satisfactionScore: { type: Number, default: 0 }, // 0-1
+    budgetUtilization: { type: Number, default: 0 }, // actualSpent/totalBudget
+    algorithm: { type: String, default: "greedy" }, // "greedy" | "knapsack"
+  },
+
+  // ============ RESEARCH METRICS (paper comparison) ============
+  researchMetrics: {
+    greedySatisfaction: Number,
+    knapsackSatisfaction: Number,
+    greedyUtilization: Number,
+    knapsackUtilization: Number,
+    processingTimeMs: Number,
+    // Seasonal experiment (new dimension for paper)
+    satisfactionWithoutSeason: Number,   // baseline (no seasonWeight)
+    satisfactionWithSeason: Number,      // with seasonWeight applied
+    seasonalImprovementDelta: Number,
+  },
+
+  // ============ SEASONAL INTELLIGENCE (seasonEngine output) ============
+  travelMonth: { type: Number, min: 1, max: 12 },  // 1–12
+  seasonalContext: {
+    season: { type: String },               // "Winter" | "Summer" | "Monsoon" | "Autumn"
+    warningLevel: { type: String, enum: ["ideal", "caution", "avoid"] },
+    warningMessage: { type: String },
+    floodRisk: { type: Boolean, default: false },
+    isPeakSeason: { type: Boolean, default: false },
+    alternatives: [String],                        // suggested destinations if avoid-season
+    destinationTags: [String],                        // e.g. ["beach", "hill", "trekking"]
+  },
   userId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "User",

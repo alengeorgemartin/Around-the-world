@@ -9,6 +9,20 @@ import {
 } from "./businessService.js";
 
 import { callGemini, extractJSON } from "./services/geminiService.js";
+import {
+  allocateBudget,
+  estimateActivityCost,
+  selectActivitiesGreedy,
+  selectActivitiesKnapsack,
+  calculateSatisfactionScore,
+  comparePlans,
+  buildBudgetBreakdown,
+} from "./services/budgetOptimizer.js";
+import {
+  buildSeasonalContext,
+  getActivitySeasonWeight,
+  extractMonth,
+} from "./services/seasonEngine.js";
 
 /* ======================================================
    GEOCODING (SMART + FALLBACK)
@@ -552,6 +566,8 @@ export const generateTravelPlan = async (req, res) => {
       startDate,
       days,
       budget,
+      budgetAmount,     // Numeric total in ₹ (optional)
+      travelMonth,      // Travel month 1-12 or name (optional, for seasonal engine)
       travelWith,
       preferences = [],
     } = req.body;
@@ -562,6 +578,25 @@ export const generateTravelPlan = async (req, res) => {
 
     const preferenceBias = buildPreferenceBias(preferences);
     const seed = Math.floor(Math.random() * 100000);
+
+    /* ---------- SEASONAL INTELLIGENCE (runs before Gemini) ---------- */
+    const effectiveTravelDate = travelMonth || startDate || new Date().getMonth() + 1;
+    const seasonalContext = buildSeasonalContext(location, effectiveTravelDate);
+    console.log(`🌦 [SeasonEngine] ${location} in ${seasonalContext.season}: level=${seasonalContext.warningLevel}${seasonalContext.floodRisk ? " ⚠ FLOOD RISK" : ""}`);
+
+    /* ---------- BUDGET OPTIMIZER — PHASE 1 (runs before Gemini) ---------- */
+    // Runs even without hotels loaded — hotels are fetched later for refinement
+    let budgetAllocation = null;
+    if (budgetAmount && budgetAmount > 0) {
+      budgetAllocation = allocateBudget({
+        totalBudget: Number(budgetAmount),
+        days: Number(days),
+        budget,
+        travelWith,
+        hotels: [], // refined after business fetch
+      });
+      console.log(`💰 [BudgetOptimizer] Activity budget ceiling: ₹${budgetAllocation?.activities}`);
+    }
 
     /* ---------- FETCH WEATHER DATA ---------- */
     let weatherData = [];
@@ -626,6 +661,21 @@ export const generateTravelPlan = async (req, res) => {
     }
 
     /* ---------- OUTLINE ---------- */
+    // Inject budget ceiling into prompt when optimizer has run
+    const budgetConstraintText = budgetAllocation
+      ? `\nBUDGET CONSTRAINTS (for activity selection guidance):
+- Total trip budget: ₹${budgetAllocation.totalBudget}
+- Activity budget per day: ~₹${Math.round(budgetAllocation.activities / days)}
+- Prefer a mix of free/budget landmarks and 1 paid attraction per day
+- DO NOT list pricing in output — guide selection only\n`
+      : "";
+
+    /* Seasonal hint — from seasonEngine, injected into Gemini prompt */
+    const seasonalHintText = seasonalContext.geminiHint
+      ? `\nSEASONAL CONTEXT (${seasonalContext.season} — ${seasonalContext.warningLevel.toUpperCase()}):
+${seasonalContext.geminiHint}\n`
+      : "";
+
     const outlinePrompt = `
 You are a professional travel planner.
 
@@ -650,7 +700,7 @@ STRICT RULES:
 6. NO duplicate places across all days
 7. Places on the same day should be geographically close to each other
 8. Follow user preferences: ${preferenceBias}
-
+${budgetConstraintText}${seasonalHintText}
 WEATHER CONTEXT (for planning only, DO NOT mention in output):
 ${weatherGuidance}
 
@@ -832,6 +882,35 @@ Seed: ${seed}
       });
     }
 
+    // Refine allocation with actual hotel price now that businesses are fetched
+    if (budgetAmount && budgetAmount > 0 && availableBusinesses.hotels.length > 0) {
+      budgetAllocation = allocateBudget({
+        totalBudget: Number(budgetAmount),
+        days: Number(days),
+        budget,
+        travelWith,
+        hotels: availableBusinesses.hotels,
+      });
+    }
+
+    // Build initial budgetBreakdown (actualSpent filled in background)
+    const initialBreakdown = budgetAllocation
+      ? buildBudgetBreakdown(
+        budgetAllocation,
+        {
+          stay: selectedBusinesses.accommodation?.selectedRoom?.pricePerNight
+            ? selectedBusinesses.accommodation.selectedRoom.pricePerNight * days
+            : budgetAllocation.stay,
+          transport: selectedBusinesses.rental?.pricePerDay
+            ? selectedBusinesses.rental.pricePerDay * days
+            : budgetAllocation.transport,
+          food: budgetAllocation.food,
+        },
+        0,       // satisfactionScore filled in background
+        "greedy"  // default, overwritten after comparison
+      )
+      : null;
+
     // Save trip immediately with basic info (including weather + business data)
     const trip = await Trip.create({
       userId: req.user.id,
@@ -841,6 +920,17 @@ Seed: ${seed}
       days,
       travelWith,
       budget,
+      budgetAmount: budgetAmount ? Number(budgetAmount) : undefined,
+      travelMonth: seasonalContext.travelMonth,
+      seasonalContext: {
+        season: seasonalContext.season,
+        warningLevel: seasonalContext.warningLevel,
+        warningMessage: seasonalContext.warningMessage,
+        floodRisk: seasonalContext.floodRisk,
+        isPeakSeason: seasonalContext.isPeakSeason,
+        alternatives: seasonalContext.alternatives,
+        destinationTags: seasonalContext.destinationTags,
+      },
       preferences,
       itinerary,
       accommodation: selectedBusinesses.accommodation
@@ -860,6 +950,7 @@ Seed: ${seed}
         ),
       },
       businessDetails: businessDetails,
+      budgetBreakdown: initialBreakdown || undefined,
     });
 
     // Return immediately to user (FAST RESPONSE)
@@ -903,12 +994,17 @@ Seed: ${seed}
               lng: 76.2711,
             };
 
+            // ── BUDGET OPTIMIZER: assign cost to activity ──────────────
+            const { estimatedCost, costTier } = estimateActivityCost(activityName, budget);
+            details.estimatedCost = estimatedCost;
+            details.costTier = costTier;
+
             // Update the activity in the database
             trip.itinerary[dayIndex][period][0] = details;
 
             // Save immediately after enriching each activity for progressive loading
             await trip.save();
-            console.log(`✅ Saved Day ${dayIndex + 1} ${period}: ${activityName}`);
+            console.log(`✅ Saved Day ${dayIndex + 1} ${period}: ${activityName} (₹${estimatedCost})`);
           }
         }
 
@@ -922,7 +1018,56 @@ Seed: ${seed}
           console.log(`✅ Routes optimized - nearby places grouped together`);
         } catch (optimizeErr) {
           console.warn(`⚠️ Route optimization failed (non-critical):`, optimizeErr.message);
-          // Continue even if optimization fails
+        }
+
+        // ── BUDGET OPTIMIZER: finalize breakdown + research metrics ────
+        if (budgetAllocation) {
+          try {
+            // Collect all enriched activities flat
+            const allActivities = trip.itinerary.flatMap(day =>
+              ['morning', 'afternoon', 'evening'].flatMap(p => day[p])
+            );
+
+            const actBudget = budgetAllocation.activities;
+
+            // Run comparison (greedy vs knapsack) for research paper
+            const { greedy, knapsack, comparison } = comparePlans(allActivities, actBudget, preferences);
+
+            // Use knapsack as the higher-quality selection
+            const finalSatisfaction = knapsack.satisfactionScore;
+
+            // Compute actual activity spend
+            const actualActivitySpend = allActivities.reduce(
+              (s, a) => s + (a.estimatedCost || 0), 0
+            );
+
+            // Update trip with final breakdown
+            trip.budgetBreakdown = buildBudgetBreakdown(
+              budgetAllocation,
+              {
+                stay: initialBreakdown?.actualSpent?.stay || budgetAllocation.stay,
+                food: budgetAllocation.food,
+                transport: initialBreakdown?.actualSpent?.transport || budgetAllocation.transport,
+                activities: actualActivitySpend,
+              },
+              finalSatisfaction,
+              "knapsack"
+            );
+
+            // Store research metrics for paper
+            trip.researchMetrics = {
+              greedySatisfaction: comparison.greedy.satisfactionScore,
+              knapsackSatisfaction: comparison.knapsack.satisfactionScore,
+              greedyUtilization: comparison.greedy.budgetUtilization,
+              knapsackUtilization: comparison.knapsack.budgetUtilization,
+              processingTimeMs: comparison.greedy.processingTimeMs + comparison.knapsack.processingTimeMs,
+            };
+
+            await trip.save();
+            console.log(`📊 [BudgetOptimizer] Final satisfaction: ${(finalSatisfaction * 100).toFixed(1)}% | Greedy vs Knapsack improvement: ${(comparison.improvement.satisfactionDelta * 100).toFixed(2)}%`);
+          } catch (optimErr) {
+            console.warn(`⚠️ Budget optimization finalization failed (non-critical):`, optimErr.message);
+          }
         }
 
       } catch (err) {
