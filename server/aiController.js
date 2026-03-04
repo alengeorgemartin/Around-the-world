@@ -8,60 +8,7 @@ import {
   selectTourForDay,
 } from "./businessService.js";
 
-/* ======================================================
-   SAFE OLLAMA CALL (LOW RAM FRIENDLY)
-====================================================== */
-async function callOllama(prompt, tokens = 250) {
-  const res = await fetch("http://localhost:11434/api/generate", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      model: "llama3.2:1b",
-      prompt,
-      stream: false,
-      options: {
-        temperature: 0.1,
-        num_predict: tokens,
-      },
-    }),
-  });
-
-  const data = await res.json();
-  return typeof data?.response === "string" ? data.response.trim() : "";
-}
-
-/* ======================================================
-   JSON EXTRACTOR
-====================================================== */
-function extractJSON(text) {
-  if (!text) return null;
-
-  // 1️⃣ Direct parse
-  try {
-    return JSON.parse(text);
-  } catch { }
-
-  // 2️⃣ Extract JSON block between first { and last }
-  const firstBrace = text.indexOf('{');
-  const lastBrace = text.lastIndexOf('}');
-
-  if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
-    try {
-      const jsonStr = text.substring(firstBrace, lastBrace + 1);
-      return JSON.parse(jsonStr);
-    } catch { }
-  }
-
-  // 3️⃣ Try to extract from code blocks
-  const codeBlockMatch = text.match(/```(?:json)?\s*(\{[\s\S]*?\})\s*```/);
-  if (codeBlockMatch) {
-    try {
-      return JSON.parse(codeBlockMatch[1]);
-    } catch { }
-  }
-
-  return null;
-}
+import { callGemini, extractJSON } from "./services/geminiService.js";
 
 /* ======================================================
    GEOCODING (SMART + FALLBACK)
@@ -368,7 +315,11 @@ Return ONLY the JSON. No explanations.
 `;
 
     try {
-      const aiResponse = await callOllama(prompt, 200);
+      const aiResponse = await callGemini(prompt, undefined, {
+        maxOutputTokens: 200,
+        jsonMode: true,
+        operationName: 'fillActivityDetails'
+      });
       const parsed = extractJSON(aiResponse);
 
       if (parsed && isValidDescription(parsed.description, activityName)) {
@@ -462,7 +413,12 @@ CRITICAL RULES:
 - Preferences: ${preferenceBias}
 `;
 
-    const parsed = extractJSON(await callOllama(prompt, 120));
+    const aiResponse = await callGemini(prompt, undefined, {
+      maxOutputTokens: 120,
+      jsonMode: true,
+      operationName: 'replaceDuplicates'
+    });
+    const parsed = extractJSON(aiResponse);
     if (parsed?.activity && isValidActivity(parsed.activity)) {
       const dayObj = outline.days.find(d => d.day === item.day);
       dayObj[item.period] = parsed.activity;
@@ -509,7 +465,12 @@ Rules:
 `;
 
   for (let i = 0; i < 2; i++) {
-    const parsed = extractJSON(await callOllama(prompt, 180));
+    const aiResponse = await callGemini(prompt, undefined, {
+      maxOutputTokens: 180,
+      jsonMode: true,
+      operationName: 'generateAlternativeActivity'
+    });
+    const parsed = extractJSON(aiResponse);
     if (parsed?.activity && parsed.activity !== currentActivity) {
       return parsed;
     }
@@ -540,7 +501,12 @@ Rules:
 - No generic names
 `;
 
-  const parsed = extractJSON(await callOllama(prompt, 220));
+  const aiResponse = await callGemini(prompt, undefined, {
+    maxOutputTokens: 220,
+    jsonMode: true,
+    operationName: 'generateActivitySuggestions'
+  });
+  const parsed = extractJSON(aiResponse);
   return Array.isArray(parsed?.suggestions) ? parsed.suggestions : [];
 }
 
@@ -566,7 +532,12 @@ Rules:
 - Align with preferences: ${preferenceBias}
 `;
 
-  const parsed = extractJSON(await callOllama(prompt, 220));
+  const aiResponse = await callGemini(prompt, undefined, {
+    maxOutputTokens: 220,
+    jsonMode: true,
+    operationName: 'generateAdditionalSuggestions'
+  });
+  const parsed = extractJSON(aiResponse);
   return Array.isArray(parsed?.suggestions) ? parsed.suggestions : [];
 }
 
@@ -696,7 +667,11 @@ Seed: ${seed}
     let lastResponse = null;
 
     for (let i = 0; i < 5; i++) {
-      const aiResponse = await callOllama(outlinePrompt, 250);
+      const aiResponse = await callGemini(outlinePrompt, undefined, {
+        maxOutputTokens: 250,
+        jsonMode: true,
+        operationName: 'generateTravelPlanOutline'
+      });
       lastResponse = aiResponse;
       console.log(`🔍 Outline attempt ${i + 1}:`, aiResponse?.substring(0, 200));
 
