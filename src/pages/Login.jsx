@@ -38,9 +38,9 @@ const Login = () => {
   };
 
   const images = [
-    "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee",
-    "https://images.unsplash.com/photo-1501785888041-af3ef285b470",
-    "https://images.unsplash.com/photo-1470770841072-f978cf4d019e"
+    "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=900",
+    "https://images.unsplash.com/photo-1501785888041-af3ef285b470?auto=format&fit=crop&w=900",
+    "https://images.unsplash.com/photo-1470770841072-f978cf4d019e?auto=format&fit=crop&w=900",
   ];
   const [currentImage, setCurrentImage] = useState(0);
 
@@ -61,15 +61,23 @@ const Login = () => {
   };
 
   const [accountType, setAccountType] = useState('personal');
-  const [mobileNumber, setMobileNumber] = useState('');
-
-  const handleMobileChange = (e) => {
-    setMobileNumber(e.target.value);
-    handleChange(e); // Keep form sync for later auth uses
-  };
+  const [showPassword, setShowPassword] = useState(false);
 
   // derived state for button validation
-  const isContinueDisabled = mobileNumber.length < 10 || isLoading;
+  const isContinueDisabled = !form.email || form.password.length < 1 || isLoading;
+
+  const inputStyle = {
+    border: '1px solid #bfbfbf',
+    padding: '10px 12px',
+    borderRadius: '0',
+    outline: 'none',
+    color: '#333',
+    background: '#fff',
+    fontSize: '14px',
+    marginBottom: '16px',
+    width: '100%',
+    boxSizing: 'border-box',
+  };
 
   return (
     <div style={{ height: '100vh', background: '#dedede', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
@@ -123,30 +131,47 @@ const Login = () => {
           )}
 
           <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column' }}>
-            <label>Mobile Number</label>
-            <div className="input-wrapper">
-              <div className="code">+91</div>
-              <input
-                type="text"
-                id="mobileInput"
-                placeholder="Enter Mobile Number"
-                name="email" /* temporarily binding to 'email' logic for backend */
-                value={mobileNumber}
-                onChange={handleMobileChange}
-              />
-            </div>
 
-            {/* hidden generic password field to satisfy potential backend validation momentarily */}
+            {/* Email */}
+            <label style={{ fontSize: '13px', fontWeight: 500, color: '#333', marginBottom: '6px' }}>Email Address</label>
             <input
-              type="password"
-              name="password"
-              value={form.password}
+              type="email"
+              id="emailInput"
+              name="email"
+              placeholder="you@example.com"
+              value={form.email}
               onChange={handleChange}
-              style={{ display: 'none' }}
+              required
+              style={inputStyle}
             />
 
+            {/* Password */}
+            <label style={{ fontSize: '13px', fontWeight: 500, color: '#333', marginBottom: '6px' }}>Password</label>
+            <div style={{ position: 'relative', marginBottom: '22px' }}>
+              <input
+                type={showPassword ? 'text' : 'password'}
+                id="passwordInput"
+                name="password"
+                placeholder="Enter password"
+                value={form.password}
+                onChange={handleChange}
+                required
+                style={{ ...inputStyle, marginBottom: 0, paddingRight: '40px' }}
+              />
+              <span
+                onClick={() => setShowPassword(v => !v)}
+                style={{
+                  position: 'absolute', right: '12px', top: '50%',
+                  transform: 'translateY(-50%)', cursor: 'pointer',
+                  fontSize: '16px', opacity: 0.6, userSelect: 'none'
+                }}
+              >
+                {showPassword ? '🙈' : '👁️'}
+              </span>
+            </div>
+
             <button type="submit" className="continue" id="continueBtn" disabled={isContinueDisabled}>
-              {isLoading ? "Signing in..." : "Continue"}
+              {isLoading ? 'Signing in...' : 'Sign In'}
             </button>
           </form>
 
@@ -154,21 +179,42 @@ const Login = () => {
 
           <div className="social">
             <button id="googleBtn" type="button" onClick={() => alert("Google login clicked")}>
-              <img src="https://upload.wikimedia.org/wikipedia/commons/5/53/Google_%22G%22_Logo.svg" alt="Google" width="16" height="16" />
+              <svg width="22" height="22" viewBox="0 0 48 48" style={{ flexShrink: 0 }}>
+                <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z" />
+                <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z" />
+                <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z" />
+                <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.31-8.16 2.31-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z" />
+                <path fill="none" d="M0 0h48v48H0z" />
+              </svg>
               Google
             </button>
             <button id="emailBtn" type="button" onClick={() => navigate('/login-email')}>
-              <div style={{ display: 'inline-flex', width: 16, height: 16, position: 'relative' }}>
-                <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M4 7.00005L10.2 11.65C11.2667 12.45 12.7333 12.45 13.8 11.65L20 7" stroke="#EA4335" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                  <rect x="3" y="5" width="18" height="14" rx="2" stroke="#4285F4" strokeWidth="2" strokeLinecap="round" />
-                </svg>
-              </div>
+              <svg width="22" height="22" viewBox="0 0 48 48" fill="none" style={{ flexShrink: 0 }}>
+                <rect x="4" y="10" width="40" height="28" rx="4" fill="#4285F4" />
+                <rect x="4" y="10" width="40" height="28" rx="4" fill="url(#emailGrad)" />
+                <path d="M4 14L24 27L44 14" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+                <defs>
+                  <linearGradient id="emailGrad" x1="4" y1="10" x2="44" y2="38" gradientUnits="userSpaceOnUse">
+                    <stop offset="0%" stopColor="#4285F4" />
+                    <stop offset="100%" stopColor="#EA4335" />
+                  </linearGradient>
+                </defs>
+              </svg>
               Email
             </button>
           </div>
 
           <div className="footer">
+            <span>
+              New here?{" "}
+              <span
+                onClick={() => navigate("/register")}
+                style={{ color: "#3b82f6", fontWeight: 600, cursor: "pointer", textDecoration: "underline" }}
+              >
+                Create Account
+              </span>
+            </span>
+            <br />
             By proceeding, you agree to our Terms of Use and confirm you have read our Privacy and Cookie Statement.
           </div>
         </div>
