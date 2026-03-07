@@ -1410,6 +1410,46 @@ function ViewTrip() {
                                 </div>
                               </div>
                             )}
+
+                            {/* TRAVEL CONNECTOR UI */}
+                            {a.travelToNext && i < day[period].length - 1 && (
+                              <div className="flex flex-col items-center my-2 select-none relative z-10 w-full" style={{ minHeight: "40px" }}>
+                                <div className="w-1 h-3 bg-blue-200 rounded-full mb-1"></div>
+                                <div className="bg-white border border-blue-200 text-blue-700 text-xs font-semibold px-3 py-1.5 rounded-full shadow-sm flex items-center gap-1.5">
+                                  <span className="text-sm">{a.travelToNext.icon}</span>
+                                  <span>{a.travelToNext.mode}</span>
+                                  <span className="text-gray-400 mx-0.5">•</span>
+                                  <span>{a.travelToNext.time}</span>
+                                  <span className="text-gray-400 mx-0.5">•</span>
+                                  <span className="text-gray-500 font-medium">{a.travelToNext.distance}</span>
+                                </div>
+                                <div className="w-1 h-3 bg-blue-200 rounded-full mt-1"></div>
+                              </div>
+                            )}
+
+                            {a.travelToNext && i === day[period].length - 1 && (() => {
+                              // Determine if there is a next period on this day
+                              const hasNextPeriod = (period === 'morning' && (day.afternoon.length > 0 || day.evening.length > 0)) ||
+                                (period === 'afternoon' && day.evening.length > 0);
+
+                              if (!hasNextPeriod) return null;
+
+                              return (
+                                <div className="flex flex-col items-center my-2 select-none relative z-10 w-full" style={{ minHeight: "40px" }}>
+                                  <div className="w-1 h-3 bg-indigo-200 rounded-full mb-1"></div>
+                                  <div className="bg-indigo-50 border border-indigo-200 text-indigo-700 text-xs font-semibold px-3 py-1.5 rounded-full shadow-sm flex items-center gap-1.5">
+                                    <span className="text-sm">{a.travelToNext.icon}</span>
+                                    <span>{a.travelToNext.mode}</span>
+                                    <span className="text-gray-400 mx-0.5">•</span>
+                                    <span>{a.travelToNext.time}</span>
+                                    <span className="text-gray-400 mx-0.5">•</span>
+                                    <span className="text-gray-500 font-medium">{a.travelToNext.distance}</span>
+                                  </div>
+                                  <div className="w-1 h-3 bg-indigo-200 rounded-full mt-1"></div>
+                                </div>
+                              )
+                            })()}
+
                           </div>
                         ))}
                       </div>

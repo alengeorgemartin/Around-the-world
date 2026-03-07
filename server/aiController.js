@@ -84,7 +84,46 @@ function calculateDistance(coord1, coord2) {
 }
 
 /**
+ * Calculates travel mode, estimated time, and human-readable distance based on distance in km
+ */
+function calculateTravelInfo(distanceKm) {
+  if (distanceKm === 0) return null;
+
+  // Walking: ~4.5 km/h
+  if (distanceKm <= 1.5) {
+    const min = Math.ceil((distanceKm / 4.5) * 60);
+    return {
+      mode: "Walking",
+      icon: "🚶",
+      time: `${min} min`,
+      distance: `${distanceKm.toFixed(1)} km`
+    };
+  }
+
+  // Cab/Auto: ~25 km/h city average
+  if (distanceKm <= 5) {
+    const min = Math.ceil((distanceKm / 25) * 60) + 2; // +2 min waiting
+    return {
+      mode: "Cab/Auto",
+      icon: "🚕",
+      time: `${min} min`,
+      distance: `${distanceKm.toFixed(1)} km`
+    };
+  }
+
+  // Transit/Bus/Drive: ~35 km/h average
+  const min = Math.ceil((distanceKm / 35) * 60) + 5; // +5 min waiting/walking to stop
+  return {
+    mode: "Transit/Drive",
+    icon: "🚌",
+    time: `${min} min`,
+    distance: `${distanceKm.toFixed(1)} km`
+  };
+}
+
+/**
  * Optimize activity order to minimize travel distance (greedy nearest-neighbor)
+ * and calculate estimated travel times between them
  */
 function optimizeDailyRoute(activities) {
   if (!activities || activities.length <= 1) return activities;
@@ -118,6 +157,15 @@ function optimizeDailyRoute(activities) {
     optimized.push(current);
   }
 
+  // Now calculate travel times between consecutive optimized stops
+  for (let i = 0; i < optimized.length - 1; i++) {
+    const dist = calculateDistance(optimized[i].geo, optimized[i + 1].geo);
+    if (dist > 0 && dist !== Infinity && dist < 100) { // arbitrary cap to avoid crazy times
+      optimized[i].travelToNext = calculateTravelInfo(dist);
+    }
+  }
+
+  // For un-geocoded activities, we append them at the end. Can't calculate travel time accurately.
   return [...optimized, ...withoutCoords];
 }
 
@@ -308,7 +356,8 @@ Return ONLY valid JSON in this format:
   "description": "actual description here",
   "placeUrl": "https://...",
   "startTime": "time",
-  "duration": "duration"
+  "duration": "duration",
+  "estimatedCost": number
 }
 
 CRITICAL INSTRUCTIONS:
@@ -319,6 +368,7 @@ CRITICAL INSTRUCTIONS:
 5. placeUrl: Wikipedia URL like https://en.wikipedia.org/wiki/${activityName.replace(/\s+/g, '_')} OR Google Maps
 6. startTime: ${period === 'morning' ? '9:00 AM' : period === 'afternoon' ? '2:00 PM' : '6:00 PM'}
 7. duration: realistic visit time (e.g., "2 hours", "1-2 hours")
+8. estimatedCost: A highly accurate numeric value in ₹ for the total expected cost per person to do this activity. Include entry fees, standard tickets, and gear rentals (e.g. trekking gear, surfboards, adventure sports fees). If it is a free public area with no rentals, use 0.
 
 Context:
 - Budget: ${budget}
@@ -995,7 +1045,7 @@ Seed: ${seed}
             };
 
             // ── BUDGET OPTIMIZER: assign cost to activity ──────────────
-            const { estimatedCost, costTier } = estimateActivityCost(activityName, budget);
+            const { estimatedCost, costTier } = estimateActivityCost(activityName, budget, details.estimatedCost);
             details.estimatedCost = estimatedCost;
             details.costTier = costTier;
 

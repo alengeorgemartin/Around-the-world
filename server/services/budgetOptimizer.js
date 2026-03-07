@@ -101,6 +101,25 @@ function estimateStayPerNight(hotels, budget) {
 }
 
 /**
+ * Estimate average transport cost per day from rental data or fallback.
+ * @param {Object[]} rentals - Rental objects with pricePerDay field
+ * @param {string}   budget - Budget category
+ * @returns {number} Estimated per-day transport cost in ₹
+ */
+function estimateTransportPerDay(rentals, budget) {
+    if (rentals && rentals.length > 0) {
+        const withPrice = rentals.filter(r => r.pricePerDay > 0);
+        if (withPrice.length > 0) {
+            return withPrice.reduce((s, r) => s + r.pricePerDay, 0) / withPrice.length;
+        }
+    }
+
+    // Calculate daily fallback cost based on total trip fallback logic
+    const key = normalizeBudgetKey(budget);
+    return TRANSPORT_BASE_COST[key] || 1200;
+}
+
+/**
  * Allocate total budget into stay / food / transport / activities.
  *
  * @param {number}   totalBudget   - Total trip budget in ₹
@@ -108,9 +127,10 @@ function estimateStayPerNight(hotels, budget) {
  * @param {string}   budget        - Budget category ("Cheap"|"Moderate"|"Luxury")
  * @param {string}   travelWith    - "Solo"|"Couple"|"Family"|"Friends"
  * @param {Object[]} hotels        - Available hotels (for avg price)
- * @returns {{ stay, food, transport, activities, totalBudget, deficit }}
+ * @param {Object[]} rentals       - Available rentals (for avg price)
+ * @returns {{ stay, food, transport, activities, totalBudget, deficit, surplus }}
  */
-export function allocateBudget({ totalBudget, days, budget, travelWith, hotels = [] }) {
+export function allocateBudget({ totalBudget, days, budget, travelWith, hotels = [], rentals = [] }) {
     if (!totalBudget || totalBudget <= 0) {
         return null; // Optimizer disabled — caller uses category-only
     }
@@ -123,11 +143,42 @@ export function allocateBudget({ totalBudget, days, budget, travelWith, hotels =
     const stayPerNight = estimateStayPerNight(hotels, budget);
     const stay = Math.round(stayPerNight * days * (people > 2 ? 1.5 : 1));
     const food = Math.round(FOOD_COST_PER_DAY[key] * days * people);
-    const transport = Math.round(TRANSPORT_BASE_COST[key] * (days > 1 ? days * 0.7 : 1));
-    const activities = Math.max(0, totalBudget - stay - food - transport);
-    const deficit = stay + food + transport > totalBudget
-        ? stay + food + transport - totalBudget
-        : 0;
+
+    // Use dynamic transport if rentals available, else fallback
+    let transport;
+    if (rentals && rentals.length > 0) {
+        // Daily rental rate * days
+        const transportPerDay = estimateTransportPerDay(rentals, budget);
+        transport = Math.round(transportPerDay * days);
+    } else {
+        // Fallback calculation logic
+        transport = Math.round(TRANSPORT_BASE_COST[key] * (days > 1 ? days * 0.7 : 1));
+    }
+
+    // BASELINE ACTIVITIES - This represents what a normal trip of this budget category SHOULD cost
+    // Assumes roughly 1.5 paid activities per person per day
+    const activityFallbackBase = ACTIVITY_COST_DEFAULTS[key === "cheap" ? "budget" : key] || 700;
+    const idealActivities = Math.round(activityFallbackBase * days * people * 1.5);
+
+    const idealTripCost = stay + food + transport + idealActivities;
+
+    let activities;
+    let surplus = 0;
+    let deficit = 0;
+
+    // THE BUDGET CAP APPROACH: Protect user from overspending if they input a massive budget but selected Cheap/Moderate
+    if (totalBudget > idealTripCost) {
+        // Highly overbudget - mark the rest as surplus savings
+        activities = idealActivities;
+        surplus = totalBudget - idealTripCost;
+    } else {
+        // Within or below ideal cost
+        activities = Math.max(0, totalBudget - stay - food - transport);
+
+        if (stay + food + transport > totalBudget) {
+            deficit = stay + food + transport - totalBudget;
+        }
+    }
 
     console.log(`💰 [BudgetOptimizer] Allocation:
     Total:      ₹${totalBudget}
@@ -135,6 +186,7 @@ export function allocateBudget({ totalBudget, days, budget, travelWith, hotels =
     Food:       ₹${food}  (₹${FOOD_COST_PER_DAY[key]}/day × ${days}D × ${people}P)
     Transport:  ₹${transport}
     Activities: ₹${activities}
+    ${surplus > 0 ? `💵  Surplus Savings: ₹${surplus}` : ""}
     ${deficit > 0 ? `⚠️  Deficit: ₹${deficit}` : "✅  Budget balanced"}`);
 
     return {
@@ -144,7 +196,8 @@ export function allocateBudget({ totalBudget, days, budget, travelWith, hotels =
         transport,
         activities,
         stayPerNight: Math.round(stayPerNight),
-        deficit,  // > 0 means budget is tight — warn user
+        deficit,
+        surplus, // Send surplus returned to frontend
     };
 }
 
@@ -158,9 +211,16 @@ export function allocateBudget({ totalBudget, days, budget, travelWith, hotels =
  *
  * @param {string} activityName
  * @param {string} budget - Budget category
+ * @param {number} estimatedCostFromGemini - Provide value if dynamically estimated by Gemini
  * @returns {{ estimatedCost: number, costTier: string }}
  */
-export function estimateActivityCost(activityName, budget) {
+export function estimateActivityCost(activityName, budget, estimatedCostFromGemini) {
+    // Priority: Always trust Gemini's dynamic estimate (which includes entry fees + rentals)
+    if (typeof estimatedCostFromGemini === 'number') {
+        const key = normalizeBudgetKey(budget);
+        return { estimatedCost: estimatedCostFromGemini, costTier: key };
+    }
+
     const name = (activityName || "").toLowerCase();
     const key = normalizeBudgetKey(budget);
 
@@ -477,6 +537,7 @@ export function buildBudgetBreakdown(allocation, actualSpent = {}, satisfactionS
             activities: actualSpent.activities || 0,
         },
         satisfactionScore,
+        surplus: allocation.surplus || 0,
         budgetUtilization: allocation.totalBudget > 0
             ? parseFloat((totalActual / allocation.totalBudget).toFixed(4))
             : 0,

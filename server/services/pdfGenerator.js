@@ -39,15 +39,22 @@ function inr(amount) {
     return `\u20b9${Number(amount).toLocaleString("en-IN")}`;
 }
 
+/** Strip emojis from a string to prevent PDFKit font rendering errors */
+function stripEmojis(str) {
+    if (!str) return "";
+    return str.replace(/([\u2700-\u27BF]|[\uE000-\uF8FF]|\uD83C[\uDC00-\uDFFF]|\uD83D[\uDC00-\uDFFF]|[\u2011-\u26FF]|\uD83E[\uDD10-\uDDFF])/g, '').trim();
+}
+
 /** Clamp text to maxLen characters */
 function clamp(text, maxLen = 200) {
     if (!text) return "";
-    return text.length > maxLen ? text.substring(0, maxLen - 3) + "..." : text;
+    const cleanText = stripEmojis(text);
+    return cleanText.length > maxLen ? cleanText.substring(0, maxLen - 3) + "..." : cleanText;
 }
 
-/** Period label and emoji */
+/** Period label */
 function periodLabel(period) {
-    return { morning: "🌅 Morning", afternoon: "☀️ Afternoon", evening: "🌙 Evening" }[period] || period;
+    return { morning: "Morning", afternoon: "Afternoon", evening: "Evening" }[period] || period;
 }
 
 /**
@@ -171,9 +178,9 @@ function drawCoverPage(doc, trip) {
 
     // Subtitle chips row (days · budget · travel with)
     const chips = [
-        `📅 ${trip.days} Day${trip.days !== 1 ? "s" : ""}`,
-        `💰 ${trip.budget || "N/A"}${trip.budgetAmount ? ` (${inr(trip.budgetAmount)})` : ""}`,
-        `👥 ${trip.travelWith || "N/A"}`,
+        `${trip.days} Day${trip.days !== 1 ? "s" : ""}`,
+        `Budget: ${trip.budget || "N/A"}${trip.budgetAmount ? ` (${inr(trip.budgetAmount)})` : ""}`,
+        `${trip.travelWith || "N/A"}`,
     ];
 
     doc
@@ -199,7 +206,7 @@ function drawCoverPage(doc, trip) {
 
         const bgColor = isIdeal ? "#ecfdf5" : isAvoid ? "#fef2f2" : "#fffbeb";
         const strokeColor = isIdeal ? COLORS.success : isAvoid ? COLORS.danger : COLORS.accent;
-        const icon = sc.season === "Summer" ? "☀" : sc.season === "Winter" ? "❄" : sc.season === "Monsoon" ? "🌧" : "🍂";
+        const icon = sc.season === "Summer" ? "Summer" : sc.season === "Winter" ? "Winter" : sc.season === "Monsoon" ? "Monsoon" : "Season";
 
         const boxY = doc.y;
         doc
@@ -210,7 +217,7 @@ function drawCoverPage(doc, trip) {
             .fillColor(strokeColor)
             .fontSize(16)
             .font("Helvetica-Bold")
-            .text(`${icon} ${sc.season} Travel: ${sc.warningLevel.toUpperCase()}`, MARGIN.left + 12, boxY + 10)
+            .text(`${icon} Travel: ${sc.warningLevel.toUpperCase()}`, MARGIN.left + 12, boxY + 10)
 
         doc
             .fillColor(COLORS.darkGray)
@@ -226,7 +233,7 @@ function drawCoverPage(doc, trip) {
                 .fillColor(COLORS.danger)
                 .fontSize(FONTS.small)
                 .font("Helvetica-Bold")
-                .text("⚠ HIGH FLOOD RISK REGION DURING MONSOON", MARGIN.left + 12, boxY + 50);
+                .text("HIGH FLOOD RISK REGION DURING MONSOON", MARGIN.left + 12, boxY + 50);
         }
 
         doc.y = boxY + (sc.floodRisk ? 68 : 52) + 20;
@@ -364,7 +371,7 @@ function drawItinerary(doc, trip, startPage) {
                     .fillColor(COLORS.bodyText)
                     .fontSize(FONTS.body)
                     .font("Helvetica-Bold")
-                    .text(`${idx + 1}. ${name}`, MARGIN.left + 12, doc.y, {
+                    .text(`${idx + 1}. ${stripEmojis(name)}`, MARGIN.left + 12, doc.y, {
                         width: doc.page.width - MARGIN.left - MARGIN.right - 100,
                         continued: true,
                     })
@@ -383,7 +390,7 @@ function drawItinerary(doc, trip, startPage) {
                         .fontSize(FONTS.small)
                         .font("Helvetica")
                         .text(
-                            `⏰ ${act.startTime || "--"}   ⏱ ${act.duration || "--"}${act.travelFromPrevious ? `   🚶 ${act.travelFromPrevious}` : ""}`,
+                            `Time: ${act.startTime || "--"}   Duration: ${act.duration || "--"}${act.travelFromPrevious ? `   Travel: ${stripEmojis(act.travelFromPrevious)}` : ""}`,
                             MARGIN.left + 12,
                             doc.y
                         );
@@ -408,7 +415,7 @@ function drawItinerary(doc, trip, startPage) {
                     doc
                         .fillColor(COLORS.midGray)
                         .fontSize(FONTS.caption)
-                        .text(`📍 ${clamp(act.address, 100)}`, MARGIN.left + 12, doc.y);
+                        .text(`Address: ${clamp(act.address, 100)}`, MARGIN.left + 12, doc.y);
                     doc.moveDown(0.15);
                 }
 
@@ -417,7 +424,7 @@ function drawItinerary(doc, trip, startPage) {
                     doc
                         .fillColor(COLORS.secondary)
                         .fontSize(FONTS.caption)
-                        .text("🔗 View on Maps / Web", MARGIN.left + 12, doc.y, {
+                        .text("View on Maps / Web", MARGIN.left + 12, doc.y, {
                             link: act.placeUrl,
                             underline: true,
                         });
@@ -447,7 +454,7 @@ function drawBudgetSection(doc, trip, pageNum) {
     doc.addPage();
     pageNum++;
 
-    drawSectionBar(doc, "💰 Smart Budget Breakdown", COLORS.dark);
+    drawSectionBar(doc, "Smart Budget Breakdown", COLORS.dark);
 
     const pageW = doc.page.width;
     const usableW = pageW - MARGIN.left - MARGIN.right;
@@ -467,8 +474,8 @@ function drawBudgetSection(doc, trip, pageNum) {
 
     // Algorithm badge
     const algo = bd.algorithm === "knapsack"
-        ? "🧠 Knapsack DP — Research-Grade Optimization"
-        : "⚡ Greedy — Baseline Allocation";
+        ? "Knapsack DP — Research-Grade Optimization"
+        : "Greedy — Baseline Allocation";
     doc
         .fillColor(bd.algorithm === "knapsack" ? COLORS.primary : COLORS.accent)
         .fontSize(FONTS.body)
@@ -501,10 +508,10 @@ function drawBudgetSection(doc, trip, pageNum) {
     const total = bd.totalBudget;
 
     const segments = [
-        { label: "🏨 Stay", value: alloc.stay, color: COLORS.primary },
-        { label: "🍽️  Food", value: alloc.food, color: COLORS.accent },
-        { label: "🚗 Transport", value: alloc.transport, color: COLORS.success },
-        { label: "🎯 Activities", value: alloc.activities, color: COLORS.danger },
+        { label: "Stay", value: alloc.stay, color: COLORS.primary },
+        { label: "Food", value: alloc.food, color: COLORS.accent },
+        { label: "Transport", value: alloc.transport, color: COLORS.success },
+        { label: "Activities", value: alloc.activities, color: COLORS.danger },
     ];
 
     // Two columns
@@ -605,7 +612,7 @@ function drawResearchSection(doc, trip, pageNum) {
     doc.addPage();
     pageNum++;
 
-    drawSectionBar(doc, "📊 Optimization Insights (Research Metrics)", COLORS.dark);
+    drawSectionBar(doc, "Optimization Insights (Research Metrics)", COLORS.dark);
 
     const pageW = doc.page.width;
 
@@ -753,7 +760,7 @@ function drawAccommodationSection(doc, trip, pageNum) {
         pageNum++;
     }
 
-    drawSectionBar(doc, "🏨 Accommodation & Partners", COLORS.secondary);
+    drawSectionBar(doc, "Accommodation & Partners", COLORS.secondary);
 
     const pageW = doc.page.width;
     const usableW = pageW - MARGIN.left - MARGIN.right;
@@ -768,9 +775,9 @@ function drawAccommodationSection(doc, trip, pageNum) {
         doc.moveDown(0.3);
 
         const hotelRows = [
-            ["Hotel Name", bd.hotel.name],
-            ["Address", bd.hotel.address || "N/A"],
-            ["Star Rating", bd.hotel.starRating ? `${"⭐".repeat(bd.hotel.starRating)}` : "N/A"],
+            ["Hotel Name", stripEmojis(bd.hotel.name)],
+            ["Address", stripEmojis(bd.hotel.address) || "N/A"],
+            ["Star Rating", bd.hotel.starRating ? `${bd.hotel.starRating} Stars` : "N/A"],
             ["Price Per Night", bd.hotel.selectedRoom?.pricePerNight ? inr(bd.hotel.selectedRoom.pricePerNight) : "N/A"],
             ["Room Type", bd.hotel.selectedRoom?.type || "N/A"],
             ["Contact Phone", bd.hotel.contact?.phone || "N/A"],
