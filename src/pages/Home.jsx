@@ -52,6 +52,7 @@ const Home = () => {
         {/* THUMBNAIL GALLERY */}
         <div className="thumbnail-gallery">
           <div className="thumbnail">
+<<<<<<< HEAD
             <img src="https://images.unsplash.com/photo-1524492412937-b28074a5d7da?auto=format&fit=crop&w=300&q=80" alt="Hawa Mahal" />
           </div>
           <div className="thumbnail">
@@ -63,6 +64,18 @@ const Home = () => {
           </div>
           <div className="thumbnail">
             <img src="https://images.unsplash.com/photo-1507525428034-b723cf961d3e?auto=format&fit=crop&w=300&q=80" alt="Beach Spit" />
+=======
+            <img src="https://images.unsplash.com/photo-1524492412937-b28074a5d7da?auto=format&fit=crop&w=300&q=80" alt="Jaipur" />
+          </div>
+          <div className="thumbnail">
+            <img src="https://images.unsplash.com/photo-1564507592333-c60657eea523?auto=format&fit=crop&w=300&q=80" alt="Taj Mahal" />
+          </div>
+          <div className="thumbnail">
+            <img src="https://images.unsplash.com/photo-1506905925346-21bda4d32df4?auto=format&fit=crop&w=300&q=80" alt="Mountain" />
+          </div>
+          <div className="thumbnail">
+            <img src="https://images.unsplash.com/photo-1501785888041-af3ef285b470?auto=format&fit=crop&w=300&q=80" alt="Beach" />
+>>>>>>> 5e87ed998656cb352f41b99d64d5316ed6d361eb
           </div>
         </div>
 
@@ -215,6 +228,7 @@ const Home = () => {
         <div className="details-btn-container">
           <button className="details-btn">Details</button>
         </div>
+<<<<<<< HEAD
 
         {/* INDUZ CARZ BANNER */}
         <div className="induz-banner-container">
@@ -253,6 +267,8 @@ const Home = () => {
             <button className="induz-start-btn">Get start</button>
           </div>
         </div>
+=======
+>>>>>>> 5e87ed998656cb352f41b99d64d5316ed6d361eb
       </div>
     </>
   );

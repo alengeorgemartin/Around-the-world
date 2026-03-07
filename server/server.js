@@ -22,6 +22,10 @@ import { appendActivity } from "./aiController.js";
 import { deleteActivity } from "./aiController.js";
 import { smartAdjustment } from "./aiController.js";
 import { undoLastChange } from "./aiController.js";
+<<<<<<< HEAD
+=======
+import { generateTripPDF } from "./services/pdfGenerator.js";
+>>>>>>> 5e87ed998656cb352f41b99d64d5316ed6d361eb
 
 
 dotenv.config();
@@ -161,6 +165,47 @@ app.post(
   smartAdjustment
 );
 
+<<<<<<< HEAD
+=======
+// ────── PDF DOWNLOAD ──────
+// GET /api/trip/:id/pdf  → streams a PDF of the full trip plan
+app.get(
+  "/api/trip/:id/pdf",
+  protect(["user", "admin"]),
+  async (req, res) => {
+    try {
+      const trip = await Trip.findById(req.params.id).lean();
+      if (!trip) {
+        return res.status(404).json({ success: false, message: "Trip not found" });
+      }
+
+      // Security: only trip owner or admin
+      if (req.user.role !== "admin" && trip.userId.toString() !== req.user.id) {
+        return res.status(403).json({ success: false, message: "Not authorized" });
+      }
+
+      const safeFilename = (trip.location || "Trip")
+        .replace(/[^a-zA-Z0-9\s-]/g, "")
+        .replace(/\s+/g, "-")
+        .substring(0, 50);
+
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader(
+        "Content-Disposition",
+        `attachment; filename="${safeFilename}-Travel-Plan.pdf"`
+      );
+
+      await generateTripPDF(trip, res);
+    } catch (err) {
+      console.error("❌ PDF generation failed:", err.message);
+      if (!res.headersSent) {
+        res.status(500).json({ success: false, message: "PDF generation failed" });
+      }
+    }
+  }
+);
+
+>>>>>>> 5e87ed998656cb352f41b99d64d5316ed6d361eb
 
 app.get("/api/admin/data", protect(["admin"]), (req, res) => {
   res.json({ message: "Admin access granted" });

@@ -23,6 +23,10 @@
     "lucide-react": "^0.562.0",
     "mongoose": "^9.0.1",
     "node-fetch": "^3.3.2",
+<<<<<<< HEAD
     "openai": "^6.25.0"
+=======
+    "pdfkit": "^0.17.2"
+>>>>>>> 5e87ed998656cb352f41b99d64d5316ed6d361eb
   }
 }

@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 import { useState, useEffect } from "react";
+=======
+import { useState } from "react";
+>>>>>>> 5e87ed998656cb352f41b99d64d5316ed6d361eb
 import { useNavigate } from "react-router-dom";
 import { setAuth } from "../utils/auth";
 import api from "../utils/api";
@@ -37,6 +41,7 @@ const Login = () => {
     }
   };
 
+<<<<<<< HEAD
   const images = [
     "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?auto=format&fit=crop&w=900",
     "https://images.unsplash.com/photo-1501785888041-af3ef285b470?auto=format&fit=crop&w=900",
@@ -217,6 +222,94 @@ const Login = () => {
             <br />
             By proceeding, you agree to our Terms of Use and confirm you have read our Privacy and Cookie Statement.
           </div>
+=======
+  return (
+    <div className="login-container">
+      <div className="login-background">
+        <div className="floating-shape shape-1"></div>
+        <div className="floating-shape shape-2"></div>
+        <div className="floating-shape shape-3"></div>
+      </div>
+
+      <div className="login-card">
+        <div className="login-header">
+          <div className="logo-container">
+            <Plane size={40} className="logo-icon" />
+          </div>
+          <h1>Welcome Back</h1>
+          <p>Sign in to continue your travel journey</p>
+        </div>
+
+        {error && (
+          <div className="error-alert">
+            <span className="error-icon">⚠️</span>
+            {error}
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit} className="login-form">
+          <div className="input-group">
+            <label htmlFor="email">Email Address</label>
+            <div className="input-wrapper">
+              <Mail size={20} className="input-icon" />
+              <input
+                id="email"
+                name="email"
+                type="email"
+                placeholder="you@example.com"
+                onChange={handleChange}
+                value={form.email}
+                required
+                autoComplete="email"
+              />
+            </div>
+          </div>
+
+          <div className="input-group">
+            <label htmlFor="password">Password</label>
+            <div className="input-wrapper">
+              <Lock size={20} className="input-icon" />
+              <input
+                id="password"
+                type="password"
+                name="password"
+                placeholder="••••••••"
+                onChange={handleChange}
+                value={form.password}
+                required
+                autoComplete="current-password"
+              />
+            </div>
+          </div>
+
+          <button type="submit" className="login-button" disabled={isLoading}>
+            {isLoading ? (
+              <>
+                <span className="spinner"></span>
+                Signing in...
+              </>
+            ) : (
+              <>
+                <LogIn size={20} />
+                Sign In
+              </>
+            )}
+          </button>
+        </form>
+
+        <div className="login-footer">
+          <p>
+            Don't have an account?{" "}
+            <button
+              type="button"
+              className="register-link"
+              onClick={() => navigate("/register")}
+            >
+              <UserPlus size={16} />
+              Create Account
+            </button>
+          </p>
+>>>>>>> 5e87ed998656cb352f41b99d64d5316ed6d361eb
         </div>
       </div>
     </div>

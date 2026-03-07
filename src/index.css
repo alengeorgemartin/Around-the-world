@@ -57,12 +57,21 @@ a {
   color: #646cff;
   text-decoration: inherit;
 }
+<<<<<<< HEAD
 
+=======
+>>>>>>> 5e87ed998656cb352f41b99d64d5316ed6d361eb
 a:hover {
   color: #535bf2;
 }
 
+<<<<<<< HEAD
 body {}
+=======
+body {
+
+}
+>>>>>>> 5e87ed998656cb352f41b99d64d5316ed6d361eb
 
 h1 {
   font-size: 3.2em;
@@ -80,11 +89,17 @@ button {
   cursor: pointer;
   transition: border-color 0.25s;
 }
+<<<<<<< HEAD
 
 button:hover {
   border-color: #646cff;
 }
 
+=======
+button:hover {
+  border-color: #646cff;
+}
+>>>>>>> 5e87ed998656cb352f41b99d64d5316ed6d361eb
 button:focus,
 button:focus-visible {
   outline: 4px auto -webkit-focus-ring-color;
@@ -95,11 +110,17 @@ button:focus-visible {
     color: #213547;
     background-color: #ffffff;
   }
+<<<<<<< HEAD
 
   a:hover {
     color: #747bff;
   }
 
+=======
+  a:hover {
+    color: #747bff;
+  }
+>>>>>>> 5e87ed998656cb352f41b99d64d5316ed6d361eb
   button {
     background-color: #f9f9f9;
   }
@@ -181,11 +202,15 @@ button:focus-visible {
   * {
     @apply border-border outline-ring/50;
   }
+<<<<<<< HEAD
 
+=======
+>>>>>>> 5e87ed998656cb352f41b99d64d5316ed6d361eb
   body {
     @apply bg-background text-foreground;
   }
 }
+<<<<<<< HEAD
 
 /* ── Custom Scrollbar ── */
 ::-webkit-scrollbar {
@@ -213,3 +238,5 @@ button:focus-visible {
   scrollbar-width: thin;
   scrollbar-color: #c8c8c8 #f0f0f0;
 }
+=======
+>>>>>>> 5e87ed998656cb352f41b99d64d5316ed6d361eb
