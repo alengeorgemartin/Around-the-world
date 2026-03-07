@@ -614,10 +614,10 @@ function ViewTrip() {
         {/* ══════════ SEASONAL INTELLIGENCE BANNER ══════════ */}
         {trip.seasonalContext && trip.seasonalContext.warningLevel && (
           <div className={`mb-6 p-5 rounded-2xl shadow-md border-l-8 flex flex-col md:flex-row gap-4 items-start md:items-center ${trip.seasonalContext.warningLevel === 'ideal'
-              ? 'bg-green-50 border-green-500'
-              : trip.seasonalContext.warningLevel === 'avoid'
-                ? 'bg-red-50 border-red-500'
-                : 'bg-yellow-50 border-yellow-500'
+            ? 'bg-green-50 border-green-500'
+            : trip.seasonalContext.warningLevel === 'avoid'
+              ? 'bg-red-50 border-red-500'
+              : 'bg-yellow-50 border-yellow-500'
             }`}>
             <div className="text-4xl">
               {trip.seasonalContext.season === 'Summer' ? '☀️'
@@ -627,7 +627,7 @@ function ViewTrip() {
             </div>
             <div className="flex-1">
               <h3 className={`text-lg font-bold mb-1 ${trip.seasonalContext.warningLevel === 'ideal' ? 'text-green-800'
-                  : trip.seasonalContext.warningLevel === 'avoid' ? 'text-red-800' : 'text-yellow-800'
+                : trip.seasonalContext.warningLevel === 'avoid' ? 'text-red-800' : 'text-yellow-800'
                 }`}>
                 Seasonal Intelligence: {trip.seasonalContext.season} Travel
               </h3>
@@ -1307,10 +1307,10 @@ function ViewTrip() {
                             </div>
 
                             {loadingExtras && activeSuggestion?.day === day.day && activeSuggestion?.period === period && activeSuggestion?.activityIndex === i && (
-                              <p className="text-xs text-gray-500 mt-2 flex items-center gap-1">
+                              <div className="text-xs text-gray-500 mt-2 flex items-center gap-1">
                                 <div className="animate-spin h-3 w-3 border-2 border-purple-600 border-t-transparent rounded-full"></div>
                                 Finding nearby ideas...
-                              </p>
+                              </div>
                             )}
 
                             {extraSuggestions.length > 0 && activeSuggestion?.day === day.day && activeSuggestion?.period === period && activeSuggestion?.activityIndex === i && (
@@ -1359,10 +1359,10 @@ function ViewTrip() {
                             )}
 
                             {loadingSmart && activeSmartSuggestion?.day === day.day && activeSmartSuggestion?.period === period && activeSmartSuggestion?.activityIndex === i && (
-                              <p className="text-xs text-gray-500 mt-2 flex items-center gap-1">
+                              <div className="text-xs text-gray-500 mt-2 flex items-center gap-1">
                                 <div className="animate-spin h-3 w-3 border-2 border-orange-600 border-t-transparent rounded-full"></div>
                                 AI is finding smart alternatives...
-                              </p>
+                              </div>
                             )}
 
                             {smartSuggestions.length > 0 && activeSmartSuggestion?.day === day.day && activeSmartSuggestion?.period === period && activeSmartSuggestion?.activityIndex === i && (

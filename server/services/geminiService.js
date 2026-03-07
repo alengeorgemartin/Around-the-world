@@ -64,7 +64,7 @@ function logTokenUsage(usage, model, operation) {
 export async function callGemini(prompt, systemMessage = '', options = {}) {
     const {
         temperature = 0.6,
-        maxOutputTokens = 900, // Google uses maxOutputTokens
+        maxOutputTokens = 3000, // Google uses maxOutputTokens
         jsonMode = false,
         useCache = true,
         operationName = 'general-generation'

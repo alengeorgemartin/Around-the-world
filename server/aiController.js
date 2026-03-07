@@ -330,7 +330,7 @@ Return ONLY the JSON. No explanations.
 
     try {
       const aiResponse = await callGemini(prompt, undefined, {
-        maxOutputTokens: 200,
+        maxOutputTokens: 1000,
         jsonMode: true,
         operationName: 'fillActivityDetails'
       });
@@ -428,7 +428,7 @@ CRITICAL RULES:
 `;
 
     const aiResponse = await callGemini(prompt, undefined, {
-      maxOutputTokens: 120,
+      maxOutputTokens: 500,
       jsonMode: true,
       operationName: 'replaceDuplicates'
     });
@@ -480,7 +480,7 @@ Rules:
 
   for (let i = 0; i < 2; i++) {
     const aiResponse = await callGemini(prompt, undefined, {
-      maxOutputTokens: 180,
+      maxOutputTokens: 1000,
       jsonMode: true,
       operationName: 'generateAlternativeActivity'
     });
@@ -516,7 +516,7 @@ Rules:
 `;
 
   const aiResponse = await callGemini(prompt, undefined, {
-    maxOutputTokens: 220,
+    maxOutputTokens: 1000,
     jsonMode: true,
     operationName: 'generateActivitySuggestions'
   });
@@ -547,7 +547,7 @@ Rules:
 `;
 
   const aiResponse = await callGemini(prompt, undefined, {
-    maxOutputTokens: 220,
+    maxOutputTokens: 1000,
     jsonMode: true,
     operationName: 'generateAdditionalSuggestions'
   });
@@ -718,7 +718,7 @@ Seed: ${seed}
 
     for (let i = 0; i < 5; i++) {
       const aiResponse = await callGemini(outlinePrompt, undefined, {
-        maxOutputTokens: 250,
+        maxOutputTokens: 3000,
         jsonMode: true,
         operationName: 'generateTravelPlanOutline'
       });
@@ -1318,7 +1318,12 @@ Rules:
 - No generic names
 `;
 
-    const parsed = extractJSON(await callOllama(prompt, 220));
+    const aiResponse = await callGemini(prompt, undefined, {
+      maxOutputTokens: 1000,
+      jsonMode: true,
+      operationName: 'smartAdjustment'
+    });
+    const parsed = extractJSON(aiResponse);
     const suggestions = Array.isArray(parsed?.suggestions) ? parsed.suggestions : [];
 
     res.json({

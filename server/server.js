@@ -44,7 +44,14 @@ mongoose.connect(process.env.MONGO_URI, { dbName: "ai_trip_planner" })
 
 
 app.use(cors({
-  origin: "http://localhost:5173",
+  origin: (origin, callback) => {
+    // Allow any localhost port (handles Vite switching from 5173 to 5174, etc.)
+    if (!origin || /^http:\/\/localhost:\d+$/.test(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true,
 }));
 
