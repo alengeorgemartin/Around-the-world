@@ -41,7 +41,6 @@ import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import "../styles/ViewTripNew.css";
 import BookingModal from "../components/BookingModal";
-
 /* ---------------- FIX LEAFLET ICON ISSUE ---------------- */
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({

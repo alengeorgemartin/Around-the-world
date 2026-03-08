@@ -1,5 +1,5 @@
 import Business from "../models/Business.js";
-import { geocodePlace } from "../aiController.js";
+import { getCoordinates } from "../services/geocodingService.js";
 
 /* ======================================================
    BUSINESS CONTROLLER - API Endpoints
@@ -51,7 +51,7 @@ export const registerBusiness = async (req, res) => {
         let geo = location.geo;
         if (!geo || !geo.lat || !geo.lng) {
             console.log("🌍 Geocoding address:", location.address, location.city);
-            const geoResult = await geocodePlace(location.address, location.city);
+            const geoResult = await getCoordinates(location.address, location.city);
             if (geoResult) {
                 geo = { lat: geoResult.lat, lng: geoResult.lng };
                 console.log("✅ Geocoded:", geo);
@@ -167,7 +167,7 @@ export const updateBusiness = async (req, res) => {
 
         // If location changed, re-geocode
         if (req.body.location && !req.body.location.geo) {
-            const geoResult = await geocodePlace(
+            const geoResult = await getCoordinates(
                 req.body.location.address,
                 req.body.location.city
             );

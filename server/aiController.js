@@ -8,204 +8,29 @@ import {
   selectTourForDay,
 } from "./businessService.js";
 
+// ✅ FIXED: callGemini and extractJSON are defined in geminiService - must be imported
 import { callGemini, extractJSON } from "./services/geminiService.js";
+import Business from "./models/Business.js";
+import fs from "fs";
+import path from "path";
+import { fileURLToPath } from "url";
 import {
-  allocateBudget,
   estimateActivityCost,
-  selectActivitiesGreedy,
-  selectActivitiesKnapsack,
-  calculateSatisfactionScore,
   comparePlans,
   buildBudgetBreakdown,
+  allocateBudget
 } from "./services/budgetOptimizer.js";
-import {
-  buildSeasonalContext,
-  getActivitySeasonWeight,
-  extractMonth,
-} from "./services/seasonEngine.js";
+import { buildSeasonalContext } from "./services/seasonEngine.js";
+import timeEngine from "./utils/timeEngine.js";
+import { getCoordinates } from "./services/geocodingService.js";
+import { optimizeDailyRoute } from "./services/routeOptimizer.js";
+
+// ✅ FIXED: geocodePlace alias - replaceActivity & appendActivity call this but only getCoordinates was imported
+const geocodePlace = getCoordinates;
 
 /* ======================================================
-   GEOCODING (SMART + FALLBACK)
+   MOCK GEOCODING (Removed in favor of geocodingService)
 ====================================================== */
-export async function geocodePlace(place, location) {
-  const queries = [
-    `${place}, ${location}`,
-    `${place}, ${location}, India`,
-    `${place}, India`,
-    location,
-  ];
-
-  for (const q of queries) {
-    const res = await fetch(
-      `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(
-        q
-      )}`,
-      {
-        headers: {
-          "User-Agent": "AI-Trip-Planner/1.0",
-          "Accept-Language": "en",
-        },
-      }
-    );
-
-    const data = await res.json();
-    if (data && data.length) {
-      return {
-        lat: parseFloat(data[0].lat),
-        lng: parseFloat(data[0].lon),
-      };
-    }
-  }
-
-  return null;
-}
-
-/* ======================================================
-   GEOGRAPHIC CLUSTERING / ROUTE OPTIMIZATION
-====================================================== */
-
-/**
- * Calculate distance between two coordinates using Haversine formula
- */
-function calculateDistance(coord1, coord2) {
-  if (!coord1 || !coord2 || !coord1.lat || !coord2.lat) return Infinity;
-
-  const R = 6371; // Earth's radius in km
-  const dLat = (coord2.lat - coord1.lat) * Math.PI / 180;
-  const dLng = (coord2.lng - coord1.lng) * Math.PI / 180;
-
-  const a =
-    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos(coord1.lat * Math.PI / 180) * Math.cos(coord2.lat * Math.PI / 180) *
-    Math.sin(dLng / 2) * Math.sin(dLng / 2);
-
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return R * c;
-}
-
-/**
- * Calculates travel mode, estimated time, and human-readable distance based on distance in km
- */
-function calculateTravelInfo(distanceKm) {
-  if (distanceKm === 0) return null;
-
-  // Walking: ~4.5 km/h
-  if (distanceKm <= 1.5) {
-    const min = Math.ceil((distanceKm / 4.5) * 60);
-    return {
-      mode: "Walking",
-      icon: "🚶",
-      time: `${min} min`,
-      distance: `${distanceKm.toFixed(1)} km`
-    };
-  }
-
-  // Cab/Auto: ~25 km/h city average
-  if (distanceKm <= 5) {
-    const min = Math.ceil((distanceKm / 25) * 60) + 2; // +2 min waiting
-    return {
-      mode: "Cab/Auto",
-      icon: "🚕",
-      time: `${min} min`,
-      distance: `${distanceKm.toFixed(1)} km`
-    };
-  }
-
-  // Transit/Bus/Drive: ~35 km/h average
-  const min = Math.ceil((distanceKm / 35) * 60) + 5; // +5 min waiting/walking to stop
-  return {
-    mode: "Transit/Drive",
-    icon: "🚌",
-    time: `${min} min`,
-    distance: `${distanceKm.toFixed(1)} km`
-  };
-}
-
-/**
- * Optimize activity order to minimize travel distance (greedy nearest-neighbor)
- * and calculate estimated travel times between them
- */
-function optimizeDailyRoute(activities) {
-  if (!activities || activities.length <= 1) return activities;
-
-  const withCoords = activities.filter(a => a.geo?.lat && a.geo?.lng);
-  const withoutCoords = activities.filter(a => !a.geo?.lat || !a.geo?.lng);
-
-  if (withCoords.length <= 1) return activities;
-
-  const optimized = [];
-  const remaining = [...withCoords];
-
-  // Start with first activity
-  let current = remaining.shift();
-  optimized.push(current);
-
-  // Greedy: always pick nearest unvisited activity
-  while (remaining.length > 0) {
-    let nearestIndex = 0;
-    let nearestDistance = Infinity;
-
-    for (let i = 0; i < remaining.length; i++) {
-      const dist = calculateDistance(current.geo, remaining[i].geo);
-      if (dist < nearestDistance) {
-        nearestDistance = dist;
-        nearestIndex = i;
-      }
-    }
-
-    current = remaining.splice(nearestIndex, 1)[0];
-    optimized.push(current);
-  }
-
-  // Now calculate travel times between consecutive optimized stops
-  for (let i = 0; i < optimized.length - 1; i++) {
-    const dist = calculateDistance(optimized[i].geo, optimized[i + 1].geo);
-    if (dist > 0 && dist !== Infinity && dist < 100) { // arbitrary cap to avoid crazy times
-      optimized[i].travelToNext = calculateTravelInfo(dist);
-    }
-  }
-
-  // For un-geocoded activities, we append them at the end. Can't calculate travel time accurately.
-  return [...optimized, ...withoutCoords];
-}
-
-/**
- * Optimize routes for all days in itinerary
- */
-function optimizeItineraryRoutes(itinerary) {
-  return itinerary.map(day => {
-    // Collect all activities for the day
-    const allActivities = [
-      ...day.morning.map(a => ({ ...a, period: 'morning' })),
-      ...day.afternoon.map(a => ({ ...a, period: 'afternoon' })),
-      ...day.evening.map(a => ({ ...a, period: 'evening' }))
-    ];
-
-    // Optimize the route
-    const optimized = optimizeDailyRoute(allActivities);
-
-    // Redistribute to morning/afternoon/evening
-    const morningCount = day.morning.length;
-    const afternoonCount = day.afternoon.length;
-
-    return {
-      day: day.day,
-      morning: optimized.slice(0, morningCount).map(a => {
-        const { period, ...rest } = a;
-        return rest;
-      }),
-      afternoon: optimized.slice(morningCount, morningCount + afternoonCount).map(a => {
-        const { period, ...rest } = a;
-        return rest;
-      }),
-      evening: optimized.slice(morningCount + afternoonCount).map(a => {
-        const { period, ...rest } = a;
-        return rest;
-      })
-    };
-  });
-}
-
 /* ======================================================
    ACTIVITY NAME VALIDATION
 ====================================================== */
@@ -1038,11 +863,9 @@ Seed: ${seed}
               weatherContext, // Pass weather context
             });
 
-            // Add geocoding
-            details.geo = (await geocodePlace(activityName, location)) || {
-              lat: 10.8505,
-              lng: 76.2711,
-            };
+            // Add Real Geocoding Support Using Google Maps API
+            const realGeo = await getCoordinates(activityName, location);
+            details.geo = realGeo || { lat: 10.8505, lng: 76.2711 }; // Ultimate fallback for bad AI spots
 
             // ── BUDGET OPTIMIZER: assign cost to activity ──────────────
             const { estimatedCost, costTier } = estimateActivityCost(activityName, budget, details.estimatedCost);
@@ -1056,19 +879,45 @@ Seed: ${seed}
             await trip.save();
             console.log(`✅ Saved Day ${dayIndex + 1} ${period}: ${activityName} (₹${estimatedCost})`);
           }
+
+          // ---------- SMART ITINERARY OPTIMIZATION PER DAY ----------
+          console.log(`🗺️  Optimizing route and scheduling times for Day ${dayIndex + 1}...`);
+          try {
+            const dayObj = trip.itinerary[dayIndex];
+
+            // 1. Gather all enriched activities for the day
+            const dayActivities = [
+              ...dayObj.morning.filter(a => a),
+              ...dayObj.afternoon.filter(a => a),
+              ...dayObj.evening.filter(a => a)
+            ];
+
+            // 2. Perform Nearest-Neighbor TSP optimization
+            const optimizedArr = optimizeDailyRoute(dayActivities);
+
+            // 3. Temporarily format into Time Engine structure to assign precise linear scheduling
+            const tempDayLayout = {
+              morning: optimizedArr.slice(0, dayObj.morning.length),
+              afternoon: optimizedArr.slice(dayObj.morning.length, dayObj.morning.length + dayObj.afternoon.length),
+              evening: optimizedArr.slice(dayObj.morning.length + dayObj.afternoon.length)
+            };
+
+            const timeline = timeEngine.buildTimeline(tempDayLayout);
+            const scheduledDay = timeEngine.timelineToItinerary(timeline);
+
+            // 4. Overwrite chronological data
+            trip.itinerary[dayIndex].morning = scheduledDay.morning;
+            trip.itinerary[dayIndex].afternoon = scheduledDay.afternoon;
+            trip.itinerary[dayIndex].evening = scheduledDay.evening;
+
+            await trip.save();
+            console.log(`✅ Day ${dayIndex + 1} optimization successful.`);
+          } catch (optimizeErr) {
+            console.warn(`⚠️ Smart Itinerary Optimization failed for Day ${dayIndex + 1}:`, optimizeErr.message);
+          }
         }
 
         console.log(`✅ Background enrichment completed for trip ${trip._id}`);
-
-        // OPTIMIZE ROUTES AFTER ALL GEOCODING IS DONE
-        console.log(`🗺️  Optimizing routes for geographic clustering...`);
-        try {
-          trip.itinerary = optimizeItineraryRoutes(trip.itinerary);
-          await trip.save();
-          console.log(`✅ Routes optimized - nearby places grouped together`);
-        } catch (optimizeErr) {
-          console.warn(`⚠️ Route optimization failed (non-critical):`, optimizeErr.message);
-        }
 
         // ── BUDGET OPTIMIZER: finalize breakdown + research metrics ────
         if (budgetAllocation) {
@@ -1126,6 +975,7 @@ Seed: ${seed}
     })();
   } catch (err) {
     console.error("❌ Trip generation failed:", err.message);
+    console.error("🔎 Stack:", err.stack);
     res.status(500).json({ success: false, message: "Trip generation failed" });
   }
 };
@@ -1261,7 +1111,8 @@ export const appendActivity = async (req, res) => {
     await trip.save();
     res.json({ success: true, data: trip });
   } catch (err) {
-    res.status(500).json({ success: false });
+    console.error("❌ appendActivity error:", err.message);
+    res.status(500).json({ success: false, message: err.message });
   }
 };
 
@@ -1326,8 +1177,9 @@ export const undoLastChange = async (req, res) => {
 
     await trip.save();
     res.json({ success: true, data: trip });
-  } catch {
-    res.status(500).json({ success: false });
+  } catch (err) {
+    console.error("❌ undoLastChange error:", err.message);
+    res.status(500).json({ success: false, message: err.message });
   }
 };
 export const smartAdjustment = async (req, res) => {
@@ -1380,8 +1232,9 @@ Rules:
       success: true,
       suggestions,
     });
-  } catch {
-    res.status(500).json({ success: false });
+  } catch (err) {
+    console.error("❌ smartAdjustment error:", err.message);
+    res.status(500).json({ success: false, message: err.message });
   }
 };
 
