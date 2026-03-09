@@ -53,11 +53,22 @@ L.Icon.Default.mergeOptions({
 });
 
 /* ---------------- AUTO FIT MAP ---------------- */
+// ✅ BUG 5 FIX: Guard against all-same-coords (would crash fitBounds into max zoom on wrong continent)
 function AutoFit({ points }) {
   const map = useMap();
 
   useEffect(() => {
     if (!points.length) return;
+
+    // Check if all points are at the same location (e.g. all-Kerala fallback)
+    const lats = [...new Set(points.map(p => p.geo.lat))];
+    const lngs = [...new Set(points.map(p => p.geo.lng))];
+    if (lats.length === 1 && lngs.length === 1) {
+      // All same point — just center on it, don't fitBounds
+      map.setView([lats[0], lngs[0]], 13);
+      return;
+    }
+
     map.fitBounds(points.map(p => [p.geo.lat, p.geo.lng]), {
       padding: [60, 60],
     });
@@ -190,10 +201,16 @@ function ViewTrip() {
   };
 
   /* ---------------- FETCH TRIP ---------------- */
+  // ✅ BUG 6 FIX: Added try/catch so network failures during polling don't break the component
   const fetchTrip = async () => {
-    const res = await api.get(`/trip/${id}`);
-    setTrip(res.data.data);
-    return res.data.data;
+    try {
+      const res = await api.get(`/trip/${id}`);
+      setTrip(res.data.data);
+      return res.data.data;
+    } catch (err) {
+      console.error("[ViewTrip] fetchTrip failed:", err.message);
+      return null;
+    }
   };
 
   /* ---------------- CHECK IF DETAILS ARE LOADING ---------------- */
@@ -281,6 +298,10 @@ function ViewTrip() {
   }, [id]);
 
   /* ---------------- MAP POINTS ---------------- */
+  // ✅ BUG 4 FIX: Exclude null geo AND the known hardcoded Kerala fallback coordinates
+  const KERALA_FALLBACK_LAT = 10.8505;
+  const KERALA_FALLBACK_LNG = 76.2711;
+
   const mapPoints = useMemo(() => {
     if (!trip) return [];
 
@@ -290,7 +311,12 @@ function ViewTrip() {
 
       ["morning", "afternoon", "evening"].forEach(slot => {
         day[slot].forEach(a => {
-          if (a.geo?.lat && a.geo?.lng) {
+          // Must have real geo coords AND not be the Kerala fallback
+          if (
+            a.geo?.lat &&
+            a.geo?.lng &&
+            !(a.geo.lat === KERALA_FALLBACK_LAT && a.geo.lng === KERALA_FALLBACK_LNG)
+          ) {
             pts.push({ ...a, day: day.day, period: slot });
           }
         });

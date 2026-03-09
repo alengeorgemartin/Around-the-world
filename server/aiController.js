@@ -864,8 +864,11 @@ Seed: ${seed}
             });
 
             // Add Real Geocoding Support Using Google Maps API
+            // ✅ BUG 3 FIX: Small delay between calls to avoid Google rate limiting
+            await new Promise(resolve => setTimeout(resolve, 300));
             const realGeo = await getCoordinates(activityName, location);
-            details.geo = realGeo || { lat: 10.8505, lng: 76.2711 }; // Ultimate fallback for bad AI spots
+            // ✅ BUG 1 FIX: Don't store fake Kerala coords — keep null if geocoding fails
+            details.geo = realGeo || null;
 
             // ── BUDGET OPTIMIZER: assign cost to activity ──────────────
             const { estimatedCost, costTier } = estimateActivityCost(activityName, budget, details.estimatedCost);
