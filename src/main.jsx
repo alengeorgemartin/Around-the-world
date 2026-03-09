@@ -19,6 +19,7 @@ import Packages from "./pages/Packages.jsx";
 import Rentals from "./pages/Rentals.jsx";
 import Hotels from "./pages/Hotels.jsx";
 import Layout from "./Layout.jsx";
+import DestinationDetails from "./pages/DestinationDetails.jsx";
 
 
 
@@ -87,6 +88,10 @@ const router = createBrowserRouter([
   {
     path: "/hotels",
     element: <Layout><Hotels /></Layout>,
+  },
+  {
+    path: "/destination/:id",
+    element: <Layout><DestinationDetails /></Layout>,
   },
 ])
 

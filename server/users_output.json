@@ -1,0 +1,417 @@
+[
+  {
+    "preferences": {
+      "interests": [
+        "Nature",
+        "Photography",
+        "Night Life",
+        "Food & Cafes",
+        "Adventure Sports"
+      ],
+      "budget": "",
+      "pace": "",
+      "travelStyle": []
+    },
+    "_id": "6957beff58003a506105a1a9",
+    "name": "Sachin",
+    "email": "sachin@gmail.com",
+    "role": "user",
+    "createdAt": "2026-01-02T12:50:07.589Z",
+    "updatedAt": "2026-01-22T07:54:31.648Z",
+    "__v": 1,
+    "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY5NTdiZWZmNTgwMDNhNTA2MTA1YTFhOSIsImlhdCI6MTc2OTA2ODQ3MSwiZXhwIjoxNzY5NjczMjcxfQ.2NI4nkuWsAZQgfARVut7NkGX-udIhwbkbxmuXhPH2FI",
+    "profilePhoto": ""
+  },
+  {
+    "preferences": {
+      "budget": "",
+      "interests": [],
+      "pace": "",
+      "travelStyle": []
+    },
+    "_id": "6957bf7758003a506105a1b3",
+    "name": "Alen",
+    "email": "seminarreportgeci@gmail.com",
+    "role": "admin",
+    "createdAt": "2026-01-02T12:52:07.142Z",
+    "updatedAt": "2026-01-12T08:36:25.392Z",
+    "__v": 1,
+    "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY5NTdiZjc3NTgwMDNhNTA2MTA1YTFiMyIsImlhdCI6MTc2ODIwNjk4NSwiZXhwIjoxNzY4ODExNzg1fQ.5r5QnjxhWvdRj9skLt3ETRnCHeuUdAOz2xTpWEd2Cm8",
+    "profilePhoto": ""
+  },
+  {
+    "preferences": {
+      "travelStyle": [
+        "Relaxation"
+      ],
+      "interests": [
+        "Food"
+      ],
+      "budget": "Moderate",
+      "pace": "Balanced"
+    },
+    "_id": "6959fcddfd459837710ce540",
+    "name": "Prathuish",
+    "email": "prathuish@gmail.com",
+    "role": "user",
+    "profilePhoto": "",
+    "createdAt": "2026-01-04T05:38:37.994Z",
+    "updatedAt": "2026-03-08T13:53:11.473Z",
+    "__v": 0,
+    "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY5NTlmY2RkZmQ0NTk4Mzc3MTBjZTU0MCIsImlhdCI6MTc3Mjk3Nzk5MSwiZXhwIjoxNzczNTgyNzkxfQ.SbZ9rI-PS4QB9GwhjNDZXMZRWCcRRAlfBpMtJLcE2Cg"
+  },
+  {
+    "preferences": {
+      "travelStyle": [],
+      "interests": [],
+      "budget": "",
+      "pace": ""
+    },
+    "_id": "695d4ca9baf80992d7d50c53",
+    "name": "Test User",
+    "email": "test_jetski@example.com",
+    "role": "user",
+    "profilePhoto": "",
+    "createdAt": "2026-01-06T17:55:53.998Z",
+    "updatedAt": "2026-01-06T17:57:25.617Z",
+    "__v": 0,
+    "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY5NWQ0Y2E5YmFmODA5OTJkN2Q1MGM1MyIsImlhdCI6MTc2NzcyMjI0NSwiZXhwIjoxNzY4MzI3MDQ1fQ.JMLTuxuwDww0d6oG6KgZpi3FOnVXvBVChVDQQXoXRF0"
+  },
+  {
+    "preferences": {
+      "travelStyle": [],
+      "interests": [],
+      "budget": "",
+      "pace": ""
+    },
+    "_id": "696ef99f4ac7f64af1d1eb14",
+    "name": "Misty Mountain Resort Owner",
+    "email": "mistymountainresort@munnarbot.com",
+    "role": "user",
+    "profilePhoto": "",
+    "createdAt": "2026-01-20T03:42:23.233Z",
+    "updatedAt": "2026-01-20T03:42:23.233Z",
+    "__v": 0
+  },
+  {
+    "preferences": {
+      "travelStyle": [],
+      "interests": [],
+      "budget": "",
+      "pace": ""
+    },
+    "_id": "696ef99f4ac7f64af1d1eb1e",
+    "name": "Green Valley Homestay Owner",
+    "email": "greenvalleyhomestay@munnarbot.com",
+    "role": "user",
+    "profilePhoto": "",
+    "createdAt": "2026-01-20T03:42:23.320Z",
+    "updatedAt": "2026-01-20T08:17:58.289Z",
+    "__v": 0,
+    "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6IjY5NmVmOTlmNGFjN2Y2NGFmMWQxZWIxZSIsImlhdCI6MTc2ODg5NzA3OCwiZXhwIjoxNzY5NTAxODc4fQ.qPzmFuNhXF-ehkJundbVq1crJWlMCeQB-593k-eErdI"
+  },
+  {
+    "preferences": {
+      "travelStyle": [],
+      "interests": [],
+      "budget": "",
+      "pace": ""
+    },
+    "_id": "696ef99f4ac7f64af1d1eb25",
+    "name": "Tea Estate Retreat Owner",
+    "email": "teaestateretreat@munnarbot.com",
+    "role": "user",
+    "profilePhoto": "",
+    "createdAt": "2026-01-20T03:42:23.402Z",
+    "updatedAt": "2026-01-20T03:42:23.402Z",
+    "__v": 0
+  },
+  {
+    "preferences": {
+      "travelStyle": [],
+      "interests": [],
+      "budget": "",
+      "pace": ""
+    },
+    "_id": "696ef99f4ac7f64af1d1eb2b",
+    "name": "Hilltop Haven Owner",
+    "email": "hilltophaven@munnarbot.com",
+    "role": "user",
+    "profilePhoto": "",
+    "createdAt": "2026-01-20T03:42:23.476Z",
+    "updatedAt": "2026-01-20T03:42:23.476Z",
+    "__v": 0
+  },
+  {
+    "preferences": {
+      "travelStyle": [],
+      "interests": [],
+      "budget": "",
+      "pace": ""
+    },
+    "_id": "696ef99f4ac7f64af1d1eb31",
+    "name": "Budget Inn Munnar Owner",
+    "email": "budgetinnmunnar@munnarbot.com",
+    "role": "user",
+    "profilePhoto": "",
+    "createdAt": "2026-01-20T03:42:23.552Z",
+    "updatedAt": "2026-01-20T03:42:23.552Z",
+    "__v": 0
+  },
+  {
+    "preferences": {
+      "travelStyle": [],
+      "interests": [],
+      "budget": "",
+      "pace": ""
+    },
+    "_id": "696ef99f4ac7f64af1d1eb37",
+    "name": "Spice Garden Resort Owner",
+    "email": "spicegardenresort@munnarbot.com",
+    "role": "user",
+    "profilePhoto": "",
+    "createdAt": "2026-01-20T03:42:23.626Z",
+    "updatedAt": "2026-01-20T03:42:23.626Z",
+    "__v": 0
+  },
+  {
+    "preferences": {
+      "travelStyle": [],
+      "interests": [],
+      "budget": "",
+      "pace": ""
+    },
+    "_id": "696ef99f4ac7f64af1d1eb3d",
+    "name": "Cloudscape Inn Owner",
+    "email": "cloudscapeinn@munnarbot.com",
+    "role": "user",
+    "profilePhoto": "",
+    "createdAt": "2026-01-20T03:42:23.705Z",
+    "updatedAt": "2026-01-20T03:42:23.705Z",
+    "__v": 0
+  },
+  {
+    "preferences": {
+      "travelStyle": [],
+      "interests": [],
+      "budget": "",
+      "pace": ""
+    },
+    "_id": "696ef99f4ac7f64af1d1eb43",
+    "name": "Mountain Echo Lodge Owner",
+    "email": "mountainecholodge@munnarbot.com",
+    "role": "user",
+    "profilePhoto": "",
+    "createdAt": "2026-01-20T03:42:23.782Z",
+    "updatedAt": "2026-01-20T03:42:23.782Z",
+    "__v": 0
+  },
+  {
+    "preferences": {
+      "travelStyle": [],
+      "interests": [],
+      "budget": "",
+      "pace": ""
+    },
+    "_id": "696ef99f4ac7f64af1d1eb49",
+    "name": "Munnar Wheels Owner",
+    "email": "munnarwheels@munnarbot.com",
+    "role": "user",
+    "profilePhoto": "",
+    "createdAt": "2026-01-20T03:42:23.857Z",
+    "updatedAt": "2026-01-20T03:42:23.857Z",
+    "__v": 0
+  },
+  {
+    "preferences": {
+      "travelStyle": [],
+      "interests": [],
+      "budget": "",
+      "pace": ""
+    },
+    "_id": "696ef99f4ac7f64af1d1eb4d",
+    "name": "Budget Bike Rentals Owner",
+    "email": "budgetbikerentals@munnarbot.com",
+    "role": "user",
+    "profilePhoto": "",
+    "createdAt": "2026-01-20T03:42:23.931Z",
+    "updatedAt": "2026-01-20T03:42:23.931Z",
+    "__v": 0
+  },
+  {
+    "preferences": {
+      "travelStyle": [],
+      "interests": [],
+      "budget": "",
+      "pace": ""
+    },
+    "_id": "696ef9a04ac7f64af1d1eb51",
+    "name": "SUV Adventures Munnar Owner",
+    "email": "suvadventuresmunnar@munnarbot.com",
+    "role": "user",
+    "profilePhoto": "",
+    "createdAt": "2026-01-20T03:42:24.003Z",
+    "updatedAt": "2026-01-20T03:42:24.003Z",
+    "__v": 0
+  },
+  {
+    "preferences": {
+      "travelStyle": [],
+      "interests": [],
+      "budget": "",
+      "pace": ""
+    },
+    "_id": "696ef9a04ac7f64af1d1eb55",
+    "name": "Royal Rides Owner",
+    "email": "royalrides@munnarbot.com",
+    "role": "user",
+    "profilePhoto": "",
+    "createdAt": "2026-01-20T03:42:24.076Z",
+    "updatedAt": "2026-01-20T03:42:24.076Z",
+    "__v": 0
+  },
+  {
+    "preferences": {
+      "travelStyle": [],
+      "interests": [],
+      "budget": "",
+      "pace": ""
+    },
+    "_id": "696ef9a04ac7f64af1d1eb59",
+    "name": "Classic Bike Tours Owner",
+    "email": "classicbiketours@munnarbot.com",
+    "role": "user",
+    "profilePhoto": "",
+    "createdAt": "2026-01-20T03:42:24.148Z",
+    "updatedAt": "2026-01-20T03:42:24.148Z",
+    "__v": 0
+  },
+  {
+    "preferences": {
+      "travelStyle": [],
+      "interests": [],
+      "budget": "",
+      "pace": ""
+    },
+    "_id": "696ef9a04ac7f64af1d1eb5d",
+    "name": "Family Travel Services Owner",
+    "email": "familytravelservices@munnarbot.com",
+    "role": "user",
+    "profilePhoto": "",
+    "createdAt": "2026-01-20T03:42:24.231Z",
+    "updatedAt": "2026-01-20T03:42:24.231Z",
+    "__v": 0
+  },
+  {
+    "preferences": {
+      "travelStyle": [],
+      "interests": [],
+      "budget": "",
+      "pace": ""
+    },
+    "_id": "696ef9a04ac7f64af1d1eb61",
+    "name": "EcoDrive Munnar Owner",
+    "email": "ecodrivemunnar@munnarbot.com",
+    "role": "user",
+    "profilePhoto": "",
+    "createdAt": "2026-01-20T03:42:24.303Z",
+    "updatedAt": "2026-01-20T03:42:24.303Z",
+    "__v": 0
+  },
+  {
+    "preferences": {
+      "travelStyle": [],
+      "interests": [],
+      "budget": "",
+      "pace": ""
+    },
+    "_id": "696ef9a04ac7f64af1d1eb65",
+    "name": "Tea Trails Explorer Owner",
+    "email": "teatrailsexplorer@munnarbot.com",
+    "role": "user",
+    "profilePhoto": "",
+    "createdAt": "2026-01-20T03:42:24.381Z",
+    "updatedAt": "2026-01-20T03:42:24.381Z",
+    "__v": 0
+  },
+  {
+    "preferences": {
+      "travelStyle": [],
+      "interests": [],
+      "budget": "",
+      "pace": ""
+    },
+    "_id": "696ef9a04ac7f64af1d1eb69",
+    "name": "Anamudi Peak Trek Owner",
+    "email": "anamudipeaktrek@munnarbot.com",
+    "role": "user",
+    "profilePhoto": "",
+    "createdAt": "2026-01-20T03:42:24.456Z",
+    "updatedAt": "2026-01-20T03:42:24.456Z",
+    "__v": 0
+  },
+  {
+    "preferences": {
+      "travelStyle": [],
+      "interests": [],
+      "budget": "",
+      "pace": ""
+    },
+    "_id": "696ef9a04ac7f64af1d1eb6d",
+    "name": "Kathakali Cultural Night Owner",
+    "email": "kathakaliculturalnight@munnarbot.com",
+    "role": "user",
+    "profilePhoto": "",
+    "createdAt": "2026-01-20T03:42:24.531Z",
+    "updatedAt": "2026-01-20T03:42:24.531Z",
+    "__v": 0
+  },
+  {
+    "preferences": {
+      "travelStyle": [],
+      "interests": [],
+      "budget": "",
+      "pace": ""
+    },
+    "_id": "696ef9a04ac7f64af1d1eb71",
+    "name": "Spice Plantation Tour Owner",
+    "email": "spiceplantationtour@munnarbot.com",
+    "role": "user",
+    "profilePhoto": "",
+    "createdAt": "2026-01-20T03:42:24.611Z",
+    "updatedAt": "2026-01-20T03:42:24.611Z",
+    "__v": 0
+  },
+  {
+    "preferences": {
+      "travelStyle": [],
+      "interests": [],
+      "budget": "",
+      "pace": ""
+    },
+    "_id": "696ef9a04ac7f64af1d1eb75",
+    "name": "Scenic Waterfall Circuit Owner",
+    "email": "scenicwaterfallcircuit@munnarbot.com",
+    "role": "user",
+    "profilePhoto": "",
+    "createdAt": "2026-01-20T03:42:24.689Z",
+    "updatedAt": "2026-01-20T03:42:24.689Z",
+    "__v": 0
+  },
+  {
+    "preferences": {
+      "travelStyle": [],
+      "interests": [],
+      "budget": "",
+      "pace": ""
+    },
+    "_id": "69aed94a4e0655180e35e6f4",
+    "name": "Test Test",
+    "email": "test1773066570174@test.com",
+    "role": "user",
+    "profilePhoto": "",
+    "createdAt": "2026-03-09T14:29:30.494Z",
+    "updatedAt": "2026-03-09T14:29:30.494Z",
+    "__v": 0
+  }
+]

@@ -1,10 +1,15 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import "../styles/Packages.css";
 
 const Packages = () => {
     const navigate = useNavigate();
     const [selectedPackage, setSelectedPackage] = useState(null);
+    const [currentSlide, setCurrentSlide] = useState(0);
+    const packagesPerSlide = 3;
+
+    // Load both default and user-created packages
+    const [allPackages, setAllPackages] = useState([]);
 
     const packages = [
         {
@@ -26,7 +31,12 @@ const Packages = () => {
                 "Desert Safari Experience"
             ],
             includes: ["Hotel", "Transport", "Breakfast", "Guide"],
-            description: "Explore the royal palaces, majestic forts, and vibrant culture of Rajasthan. Experience the grandeur of India's most colorful state."
+            description: "Explore the royal palaces, majestic forts, and vibrant culture of Rajasthan. Experience the grandeur of India's most colorful state.",
+            customerReviews: [
+                { name: "Priya Sharma", rating: 5, text: "Absolutely magical experience! The palaces were stunning and the service was exceptional.", date: "Feb 2026" },
+                { name: "Rajesh Kumar", rating: 5, text: "Best heritage tour ever! Guides were knowledgeable and hospitality was warm.", date: "Jan 2026" },
+                { name: "Anjali Gupta", rating: 4, text: "Great experience overall. Only wish there was more time in each location.", date: "Dec 2025" }
+            ]
         },
         {
             id: 2,
@@ -47,7 +57,12 @@ const Packages = () => {
                 "Kathakali Dance Show"
             ],
             includes: ["Hotel", "Houseboat", "Meals", "Transfers"],
-            description: "Discover God's Own Country with serene backwaters, lush tea gardens, and pristine beaches. Perfect for relaxation and rejuvenation."
+            description: "Discover God's Own Country with serene backwaters, lush tea gardens, and pristine beaches. Perfect for relaxation and rejuvenation.",
+            customerReviews: [
+                { name: "Meera Nair", rating: 5, text: "Paradise on earth! The houseboat experience was unforgettable. Perfectly relaxing.", date: "Feb 2026" },
+                { name: "Vikram Pillai", rating: 5, text: "Exceptional service and breathtaking views. Will definitely revisit!", date: "Jan 2026" },
+                { name: "Sophie Johnson", rating: 5, text: "Best vacation ever. The Ayurvedic spa and backwater rides were heavenly.", date: "Dec 2025" }
+            ]
         },
         {
             id: 3,
@@ -68,7 +83,12 @@ const Packages = () => {
                 "Monastery Visits"
             ],
             includes: ["Hotel", "Adventure Activities", "Breakfast", "Transport"],
-            description: "Thrill seekers paradise! Trek through snow-capped mountains, experience adventure sports, and explore serene valleys."
+            description: "Thrill seekers paradise! Trek through snow-capped mountains, experience adventure sports, and explore serene valleys.",
+            customerReviews: [
+                { name: "Arun Singh", rating: 5, text: "Epic adventure! The trekking was challenging but rewarding. Best guides ever!", date: "Feb 2026" },
+                { name: "Karishma Verma", rating: 4, text: "Thrilling experience! Paragliding was the highlight. Food could be better.", date: "Jan 2026" },
+                { name: "Mark Wilson", rating: 5, text: "Amazing landscapes and adrenaline-pumping activities. Loved every moment!", date: "Dec 2025" }
+            ]
         },
         {
             id: 4,
@@ -89,7 +109,12 @@ const Packages = () => {
                 "Sunset Cruise"
             ],
             includes: ["Hotel", "Breakfast", "Water Sports", "Transfers"],
-            description: "Sun, sand, and sea! Enjoy vibrant beaches, water sports, nightlife, and Portuguese architecture in India's party capital."
+            description: "Sun, sand, and sea! Enjoy vibrant beaches, water sports, nightlife, and Portuguese architecture in India's party capital.",
+            customerReviews: [
+                { name: "Sneha Desai", rating: 5, text: "Pure paradise! Beach, parties, and perfect weather. Couldn't ask for better!", date: "Feb 2026" },
+                { name: "Rohan Patel", rating: 4, text: "Great beach experience. Water sports were fun. Nightlife exceeded expectations!", date: "Jan 2026" },
+                { name: "Emma Davis", rating: 5, text: "Best beach holiday ever! The sunset cruise was romantic and unforgettable.", date: "Dec 2025" }
+            ]
         },
         {
             id: 5,
@@ -110,7 +135,12 @@ const Packages = () => {
                 "Cultural Dinner Show"
             ],
             includes: ["Hotel", "Transport", "Breakfast", "Entry Fees"],
-            description: "Experience the Golden Triangle of India. Visit the iconic Taj Mahal and explore the rich Mughal and Rajput heritage."
+            description: "Experience the Golden Triangle of India. Visit the iconic Taj Mahal and explore the rich Mughal and Rajput heritage.",
+            customerReviews: [
+                { name: "Deepak Mishra", rating: 5, text: "Taj Mahal sunrise was magical! Worth seeing in person. Excellent tour guides.", date: "Feb 2026" },
+                { name: "Lisa Anderson", rating: 5, text: "A dream come true! The Taj Mahal is even more beautiful than expected.", date: "Jan 2026" },
+                { name: "Arjun Reddy", rating: 4, text: "Fantastic heritage experience. The forts and palaces are stunning!", date: "Dec 2025" }
+            ]
         },
         {
             id: 6,
@@ -131,7 +161,12 @@ const Packages = () => {
                 "Buddhist Monasteries"
             ],
             includes: ["Hotel", "Camp", "All Meals", "Oxygen Support"],
-            description: "Journey to the land of high passes. Experience breathtaking landscapes, serene lakes, and ancient Buddhist culture."
+            description: "Journey to the land of high passes. Experience breathtaking landscapes, serene lakes, and ancient Buddhist culture.",
+            customerReviews: [
+                { name: "Nikhil Yadav", rating: 5, text: "Bucket list completed! Pangong Lake is absolutely stunning. Life-changing journey!", date: "Feb 2026" },
+                { name: "Catherine Moore", rating: 5, text: "Highest adventure of my life! The landscapes are out of this world.", date: "Jan 2026" },
+                { name: "Rajesh Soni", rating: 5, text: "Exceptional! The camel safari and monastery visits were incredible experiences.", date: "Dec 2025" }
+            ]
         }
     ];
 
@@ -141,6 +176,33 @@ const Packages = () => {
     const filteredPackages = filter === "All"
         ? packages
         : packages.filter(pkg => pkg.category === filter);
+
+    // Calculate total slides
+    const totalSlides = Math.ceil(filteredPackages.length / packagesPerSlide);
+    
+    // Get packages for current slide
+    const startIdx = currentSlide * packagesPerSlide;
+    const currentPackages = filteredPackages.slice(startIdx, startIdx + packagesPerSlide);
+
+    // Handle next slide
+    const handleNextSlide = () => {
+        if (currentSlide < totalSlides - 1) {
+            setCurrentSlide(currentSlide + 1);
+        }
+    };
+
+    // Handle previous slide
+    const handlePrevSlide = () => {
+        if (currentSlide > 0) {
+            setCurrentSlide(currentSlide - 1);
+        }
+    };
+
+    // Reset slide when filter changes
+    const handleFilterChange = (cat) => {
+        setFilter(cat);
+        setCurrentSlide(0);
+    };
 
     return (
         <>
@@ -154,7 +216,7 @@ const Packages = () => {
                         <div
                             key={cat}
                             className={`category ${filter === cat ? 'active' : ''}`}
-                            onClick={() => setFilter(cat)}
+                            onClick={() => handleFilterChange(cat)}
                         >
                             <i className={`fa-solid ${cat === 'All' ? 'fa-th-large' :
                                 cat === 'Heritage' ? 'fa-landmark' :
@@ -167,9 +229,18 @@ const Packages = () => {
                     ))}
                 </div>
 
-                {/* Packages Grid */}
-                <div className="packages-grid">
-                    {filteredPackages.map((pkg) => (
+                {/* Packages Carousel */}
+                <div className="packages-carousel-container">
+                    <button 
+                        className={`carousel-btn carousel-btn-prev ${currentSlide === 0 ? 'disabled' : ''}`}
+                        onClick={handlePrevSlide}
+                        disabled={currentSlide === 0}
+                    >
+                        <i className="fa-solid fa-chevron-left"></i>
+                    </button>
+
+                    <div className="packages-grid packages-carousel">
+                        {currentPackages.map((pkg) => (
                         <div className="package-card" key={pkg.id}>
                             <div className="package-image-container">
                                 <img
@@ -220,6 +291,26 @@ const Packages = () => {
                             </div>
                         </div>
                     ))}
+                    </div>
+
+                    <button 
+                        className={`carousel-btn carousel-btn-next ${currentSlide === totalSlides - 1 ? 'disabled' : ''}`}
+                        onClick={handleNextSlide}
+                        disabled={currentSlide === totalSlides - 1}
+                    >
+                        <i className="fa-solid fa-chevron-right"></i>
+                    </button>
+                </div>
+
+                {/* Slide Indicators */}
+                <div className="carousel-indicators">
+                    {Array.from({ length: totalSlides }).map((_, idx) => (
+                        <button
+                            key={idx}
+                            className={`indicator-dot ${currentSlide === idx ? 'active' : ''}`}
+                            onClick={() => setCurrentSlide(idx)}
+                        ></button>
+                    ))}
                 </div>
             </div>
 
@@ -268,6 +359,28 @@ const Packages = () => {
                                         <div key={idx} className="include-item">
                                             <i className="fa-solid fa-check"></i>
                                             {item}
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <div className="modal-section">
+                                <h3><i className="fa-solid fa-star"></i> Customer Reviews</h3>
+                                <div className="reviews-list">
+                                    {selectedPackage.customerReviews && selectedPackage.customerReviews.map((review, idx) => (
+                                        <div key={idx} className="review-card">
+                                            <div className="review-header">
+                                                <div>
+                                                    <h4>{review.name}</h4>
+                                                    <span className="review-date">{review.date}</span>
+                                                </div>
+                                                <div className="review-rating">
+                                                    {[...Array(review.rating)].map((_, i) => (
+                                                        <i key={i} className="fa-solid fa-star"></i>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                            <p className="review-text">{review.text}</p>
                                         </div>
                                     ))}
                                 </div>

@@ -38,6 +38,25 @@ const Profile = () => {
   const [loadingBusinesses, setLoadingBusinesses] = useState(false);
   const [showBusinessModal, setShowBusinessModal] = useState(false);
 
+  // Package Creation State
+  const [showPackageModal, setShowPackageModal] = useState(false);
+  const [userPackages, setUserPackages] = useState([]);
+  const [newPackage, setNewPackage] = useState({
+    title: '',
+    location: '',
+    duration: '',
+    price: '',
+    originalPrice: '',
+    category: 'Adventure',
+    description: '',
+    highlights: [],
+    includes: [],
+    image: null,
+    images: []
+  });
+  const [highlightInput, setHighlightInput] = useState('');
+  const [includeInput, setIncludeInput] = useState('');
+
   const allPreferenceOptions = [
     'Adventure', 'Culture', 'Food', 'Nature', 'Beach', 'Mountains',
     'Cities', 'Wildlife', 'Shopping', 'Photography', 'Hiking', 'Nightlife',
@@ -92,6 +111,14 @@ const Profile = () => {
       navigate('/login');
     }
   }, [navigate]);
+
+  // Fetch user's packages from localStorage
+  useEffect(() => {
+    const savedPackages = localStorage.getItem('userPackages');
+    if (savedPackages) {
+      setUserPackages(JSON.parse(savedPackages));
+    }
+  }, []);
 
   // Fetch user's businesses
   useEffect(() => {
@@ -216,6 +243,113 @@ const Profile = () => {
     }
   };
 
+  // Package creation handlers
+  const addHighlight = () => {
+    if (highlightInput.trim()) {
+      setNewPackage({
+        ...newPackage,
+        highlights: [...newPackage.highlights, highlightInput]
+      });
+      setHighlightInput('');
+    }
+  };
+
+  const removeHighlight = (index) => {
+    setNewPackage({
+      ...newPackage,
+      highlights: newPackage.highlights.filter((_, i) => i !== index)
+    });
+  };
+
+  const addInclude = () => {
+    if (includeInput.trim()) {
+      setNewPackage({
+        ...newPackage,
+        includes: [...newPackage.includes, includeInput]
+      });
+      setIncludeInput('');
+    }
+  };
+
+  const removeInclude = (index) => {
+    setNewPackage({
+      ...newPackage,
+      includes: newPackage.includes.filter((_, i) => i !== index)
+    });
+  };
+
+  const handleImageUpload = (e, isMain = false) => {
+    const files = e.target.files;
+    if (files) {
+      Array.from(files).forEach(file => {
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          if (isMain) {
+            setNewPackage({
+              ...newPackage,
+              image: event.target.result
+            });
+          } else {
+            setNewPackage({
+              ...newPackage,
+              images: [...newPackage.images, event.target.result]
+            });
+          }
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+  };
+
+  const handleCreatePackage = () => {
+    if (!newPackage.title || !newPackage.location || !newPackage.duration || !newPackage.price) {
+      alert('Please fill in all required fields (title, location, duration, price)');
+      return;
+    }
+
+    const packageToAdd = {
+      id: Date.now(),
+      ...newPackage,
+      rating: 4.5,
+      reviews: 0,
+      category: newPackage.category,
+      isUserCreated: true
+    };
+
+    const updatedPackages = [...userPackages, packageToAdd];
+    setUserPackages(updatedPackages);
+    localStorage.setItem('userPackages', JSON.stringify(updatedPackages));
+
+    alert('Package created successfully! It will now appear on the Packages page.');
+    setShowPackageModal(false);
+    resetPackageForm();
+  };
+
+  const resetPackageForm = () => {
+    setNewPackage({
+      title: '',
+      location: '',
+      duration: '',
+      price: '',
+      originalPrice: '',
+      category: 'Adventure',
+      description: '',
+      highlights: [],
+      includes: [],
+      image: null,
+      images: []
+    });
+    setHighlightInput('');
+    setIncludeInput('');
+  };
+
+  const deleteUserPackage = (packageId) => {
+    const updatedPackages = userPackages.filter(pkg => pkg.id !== packageId);
+    setUserPackages(updatedPackages);
+    localStorage.setItem('userPackages', JSON.stringify(updatedPackages));
+    alert('Package deleted successfully!');
+  };
+
   if (!user) {
     return <div className="loading">Loading profile...</div>;
   }
@@ -283,7 +417,7 @@ const Profile = () => {
       </div>
 
       <div className="profile-tabs">
-        {['overview', 'preferences', 'businesses', 'bookings', 'favorites'].map(tab => (
+        {['overview', 'preferences', 'businesses', 'packages', 'bookings', 'favorites'].map(tab => (
           <button
             key={tab}
             className={`tab-btn ${activeTab === tab ? 'active' : ''}`}
@@ -292,6 +426,7 @@ const Profile = () => {
             {tab === 'overview' && <Compass size={18} />}
             {tab === 'preferences' && <Heart size={18} />}
             {tab === 'businesses' && <Building2 size={18} />}
+            {tab === 'packages' && <Map size={18} />}
             {tab === 'bookings' && <CalendarCheck size={18} />}
             {tab === 'favorites' && <Star size={18} />}
             {tab === 'bookings' ? 'Manage Bookings' : tab.charAt(0).toUpperCase() + tab.slice(1)}
@@ -536,6 +671,75 @@ const Profile = () => {
           </div>
         )}
 
+        {/* Packages Tab */}
+        {activeTab === 'packages' && (
+          <div className="packages-content">
+            <div className="section-card">
+              <div className="section-header-with-actions">
+                <h2 className="section-title">
+                  <Map size={24} />
+                  My Travel Packages
+                </h2>
+                <button
+                  className="register-business-btn text-white"
+                  onClick={() => {
+                    resetPackageForm();
+                    setShowPackageModal(true);
+                  }}
+                >
+                  <Plus size={18} />
+                  Create New Package
+                </button>
+              </div>
+
+              {userPackages.length === 0 ? (
+                <div className="empty-state text-white">
+                  <Map size={48} className="empty-icon" />
+                  <h3>No Packages Created</h3>
+                  <p>Create your own travel packages to share with other travelers!</p>
+                  <button
+                    className="cta-register-btn text-white"
+                    onClick={() => {
+                      resetPackageForm();
+                      setShowPackageModal(true);
+                    }}
+                  >
+                    <Plus size={20} />
+                    Create Your First Package
+                  </button>
+                </div>
+              ) : (
+                <div className="user-packages-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))', gap: '25px', marginTop: '25px' }}>
+                  {userPackages.map(pkg => (
+                    <div key={pkg.id} style={{ background: 'white', borderRadius: '16px', overflow: 'hidden', boxShadow: '0 4px 15px rgba(0,0,0,0.1)', transition: 'transform 0.3s ease' }}>
+                      {pkg.image && (
+                        <img src={pkg.image} alt={pkg.title} style={{ width: '100%', height: '200px', objectFit: 'cover' }} />
+                      )}
+                      <div style={{ padding: '20px' }}>
+                        <h3 style={{ marginBottom: '10px', fontSize: '18px', fontWeight: '700', color: '#1a1a1a' }}>{pkg.title}</h3>
+                        <p style={{ fontSize: '14px', color: '#666', marginBottom: '8px' }}><MapPin size={16} style={{ display: 'inline', marginRight: '5px' }} />{pkg.location}</p>
+                        <p style={{ fontSize: '14px', color: '#666', marginBottom: '8px' }}>Duration: {pkg.duration}</p>
+                        <p style={{ fontSize: '16px', fontWeight: '700', color: '#667eea', marginBottom: '15px' }}>{pkg.price}</p>
+                        <div style={{ display: 'flex', gap: '10px' }}>
+                          <button onClick={() => {
+                            setNewPackage(pkg);
+                            setShowPackageModal(true);
+                          }} style={{ flex: 1, padding: '10px', background: '#667eea', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: '600' }}>
+                            Edit
+                          </button>
+                          <button onClick={() => deleteUserPackage(pkg.id)} style={{ flex: 1, padding: '10px', background: '#ff4757', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: '600' }}>
+                            Delete
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* Favorites Tab */}
         {activeTab === 'favorites' && (
           <div className="favorites-content">
@@ -556,6 +760,128 @@ const Profile = () => {
         onClose={() => setShowBusinessModal(false)}
         onSubmit={handleBusinessSubmit}
       />
+
+      {/* Package Creation Modal */}
+      {showPackageModal && (
+        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }} onClick={() => setShowPackageModal(false)}>
+          <div style={{ background: 'white', borderRadius: '16px', maxWidth: '600px', width: '90%', maxHeight: '90vh', overflow: 'auto', padding: '30px', boxShadow: '0 20px 60px rgba(0,0,0,0.3)' }} onClick={e => e.stopPropagation()}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '25px' }}>
+              <h2 style={{ fontSize: '24px', fontWeight: '700', color: '#1a1a1a', margin: 0 }}>Create Travel Package</h2>
+              <button onClick={() => setShowPackageModal(false)} style={{ background: 'none', border: 'none', fontSize: '28px', cursor: 'pointer', color: '#999' }}>×</button>
+            </div>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+              {/* Title */}
+              <div>
+                <label style={{ display: 'block', marginBottom: '5px', fontWeight: '600', color: '#333' }}>Package Title *</label>
+                <input type="text" value={newPackage.title} onChange={(e) => setNewPackage({...newPackage, title: e.target.value})} placeholder="e.g., Himalayan Trekking Adventure" style={{ width: '100%', padding: '12px', border: '1px solid #ddd', borderRadius: '8px', fontSize: '14px', boxSizing: 'border-box' }} />
+              </div>
+
+              {/* Location */}
+              <div>
+                <label style={{ display: 'block', marginBottom: '5px', fontWeight: '600', color: '#333' }}>Location *</label>
+                <input type="text" value={newPackage.location} onChange={(e) => setNewPackage({...newPackage, location: e.target.value})} placeholder="e.g., Manali, Dharamshala, Himachal Pradesh" style={{ width: '100%', padding: '12px', border: '1px solid #ddd', borderRadius: '8px', fontSize: '14px', boxSizing: 'border-box' }} />
+              </div>
+
+              {/* Duration */}
+              <div>
+                <label style={{ display: 'block', marginBottom: '5px', fontWeight: '600', color: '#333' }}>Duration*</label>
+                <input type="text" value={newPackage.duration} onChange={(e) => setNewPackage({...newPackage, duration: e.target.value})} placeholder="e.g., 5 Days / 4 Nights" style={{ width: '100%', padding: '12px', border: '1px solid #ddd', borderRadius: '8px', fontSize: '14px', boxSizing: 'border-box' }} />
+              </div>
+
+              {/* Price */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
+                <div>
+                  <label style={{ display: 'block', marginBottom: '5px', fontWeight: '600', color: '#333' }}>Price (₹) *</label>
+                  <input type="text" value={newPackage.price} onChange={(e) => setNewPackage({...newPackage, price: e.target.value})} placeholder="e.g., ₹25,999" style={{ width: '100%', padding: '12px', border: '1px solid #ddd', borderRadius: '8px', fontSize: '14px', boxSizing: 'border-box' }} />
+                </div>
+                <div>
+                  <label style={{ display: 'block', marginBottom: '5px', fontWeight: '600', color: '#333' }}>Original Price (₹)</label>
+                  <input type="text" value={newPackage.originalPrice} onChange={(e) => setNewPackage({...newPackage, originalPrice: e.target.value})} placeholder="e.g., ₹32,999" style={{ width: '100%', padding: '12px', border: '1px solid #ddd', borderRadius: '8px', fontSize: '14px', boxSizing: 'border-box' }} />
+                </div>
+              </div>
+
+              {/* Category */}
+              <div>
+                <label style={{ display: 'block', marginBottom: '5px', fontWeight: '600', color: '#333' }}>Category</label>
+                <select value={newPackage.category} onChange={(e) => setNewPackage({...newPackage, category: e.target.value})} style={{ width: '100%', padding: '12px', border: '1px solid #ddd', borderRadius: '8px', fontSize: '14px', boxSizing: 'border-box' }}>
+                  <option>Adventure</option>
+                  <option>Heritage</option>
+                  <option>Nature</option>
+                  <option>Beach</option>
+                </select>
+              </div>
+
+              {/* Description */}
+              <div>
+                <label style={{ display: 'block', marginBottom: '5px', fontWeight: '600', color: '#333' }}>Description</label>
+                <textarea value={newPackage.description} onChange={(e) => setNewPackage({...newPackage, description: e.target.value})} placeholder="Describe your package..." style={{ width: '100%', padding: '12px', border: '1px solid #ddd', borderRadius: '8px', fontSize: '14px', minHeight: '100px', boxSizing: 'border-box' }} />
+              </div>
+
+              {/* Main Image Upload */}
+              <div>
+                <label style={{ display: 'block', marginBottom: '5px', fontWeight: '600', color: '#333' }}>Main Image</label>
+                <input type="file" accept="image/*" onChange={(e) => handleImageUpload(e, true)} style={{ width: '100%', padding: '10px', border: '1px dashed #ddd', borderRadius: '8px' }} />
+                {newPackage.image && <img src={newPackage.image} alt="Preview" style={{ width: '100%', marginTop: '10px', borderRadius: '8px', maxHeight: '150px', objectFit: 'cover' }} />}
+              </div>
+
+              {/* Gallery Images Upload */}
+              <div>
+                <label style={{ display: 'block', marginBottom: '5px', fontWeight: '600', color: '#333' }}>Gallery Images</label>
+                <input type="file" accept="image/*" multiple onChange={(e) => handleImageUpload(e, false)} style={{ width: '100%', padding: '10px', border: '1px dashed #ddd', borderRadius: '8px' }} />
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(80px, 1fr))', gap: '10px', marginTop: '10px' }}>
+                  {newPackage.images.map((img, idx) => (
+                    <div key={idx} style={{ position: 'relative' }}>
+                      <img src={img} alt={`Gallery ${idx}`} style={{ width: '100%', height: '80px', objectFit: 'cover', borderRadius: '8px' }} />
+                      <button onClick={() => setNewPackage({...newPackage, images: newPackage.images.filter((_, i) => i !== idx)})} style={{ position: 'absolute', top: '-5px', right: '-5px', background: '#ff4757', color: 'white', border: 'none', borderRadius: '50%', width: '24px', height: '24px', cursor: 'pointer', fontSize: '14px' }}>×</button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Highlights */}
+              <div>
+                <label style={{ display: 'block', marginBottom: '5px', fontWeight: '600', color: '#333' }}>Highlights</label>
+                <div style={{ display: 'flex', gap: '10px', marginBottom: '10px' }}>
+                  <input type="text" value={highlightInput} onChange={(e) => setHighlightInput(e.target.value)} onKeyPress={(e) => e.key === 'Enter' && addHighlight()} placeholder="Add a highlight..." style={{ flex: 1, padding: '12px', border: '1px solid #ddd', borderRadius: '8px', fontSize: '14px' }} />
+                  <button onClick={addHighlight} style={{ padding: '12px 20px', background: '#667eea', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: '600' }}>Add</button>
+                </div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                  {newPackage.highlights.map((hl, idx) => (
+                    <span key={idx} style={{ background: '#f0f0f0', padding: '8px 12px', borderRadius: '20px', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      {hl}
+                      <button onClick={() => removeHighlight(idx)} style={{ background: 'none', border: 'none', color: '#ff4757', cursor: 'pointer', fontSize: '16px', padding: '0' }}>×</button>
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              {/* Includes */}
+              <div>
+                <label style={{ display: 'block', marginBottom: '5px', fontWeight: '600', color: '#333' }}>What's Included</label>
+                <div style={{ display: 'flex', gap: '10px', marginBottom: '10px' }}>
+                  <input type="text" value={includeInput} onChange={(e) => setIncludeInput(e.target.value)} onKeyPress={(e) => e.key === 'Enter' && addInclude()} placeholder="e.g., Hotel, Meals, Transport..." style={{ flex: 1, padding: '12px', border: '1px solid #ddd', borderRadius: '8px', fontSize: '14px' }} />
+                  <button onClick={addInclude} style={{ padding: '12px 20px', background: '#667eea', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontWeight: '600' }}>Add</button>
+                </div>
+                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '8px' }}>
+                  {newPackage.includes.map((inc, idx) => (
+                    <span key={idx} style={{ background: '#f0f0f0', padding: '8px 12px', borderRadius: '20px', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      {inc}
+                      <button onClick={() => removeInclude(idx)} style={{ background: 'none', border: 'none', color: '#ff4757', cursor: 'pointer', fontSize: '16px', padding: '0' }}>×</button>
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              {/* Buttons */}
+              <div style={{ display: 'flex', gap: '12px', marginTop: '25px' }}>
+                <button onClick={handleCreatePackage} style={{ flex: 1, padding: '14px', background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', color: 'white', border: 'none', borderRadius: '8px', fontSize: '16px', fontWeight: '700', cursor: 'pointer' }}>Create Package</button>
+                <button onClick={() => setShowPackageModal(false)} style={{ flex: 1, padding: '14px', background: '#eee', color: '#333', border: 'none', borderRadius: '8px', fontSize: '16px', fontWeight: '700', cursor: 'pointer' }}>Cancel</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
