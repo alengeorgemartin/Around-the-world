@@ -7,6 +7,7 @@ import {
     getBookingById,
     updateBookingStatus,
     cancelBooking,
+    processMockPayment
 } from "../controllers/bookingController.js";
 import { protect } from "../middleware/authMiddleware.js";
 
@@ -26,5 +27,6 @@ router.delete("/:id", protect(["user", "admin"]), cancelBooking);
 router.get("/business/my-bookings", protect(["user", "admin"]), getBusinessOwnerBookings);
 router.get("/business/:businessId", protect(["user", "admin"]), getBusinessBookings);
 router.patch("/:id/status", protect(["user", "admin"]), updateBookingStatus);
+router.patch("/:id/pay", protect(["user", "admin"]), processMockPayment);
 
 export default router;

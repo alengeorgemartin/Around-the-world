@@ -25,6 +25,7 @@
     "lucide-react": "^0.562.0",
     "mongoose": "^9.0.1",
     "node-fetch": "^3.3.2",
-    "pdfkit": "^0.17.2"
+    "pdfkit": "^0.17.2",
+    "razorpay": "^2.9.6"
   }
 }

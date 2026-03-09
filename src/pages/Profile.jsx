@@ -8,6 +8,7 @@ import {
 import '../styles/Profile.css';
 import BusinessRegistrationModal from '../components/BusinessRegistrationModal';
 import ManageBookings from './ManageBookings';
+import UserBookings from './UserBookings';
 import api from '../utils/api';
 
 const Profile = () => {
@@ -19,7 +20,7 @@ const Profile = () => {
     countriesExplored: 0,
     photosShared: 0
   });
-  const [activeTab, setActiveTab] = useState('overview');
+  const [activeTab, setActiveTab] = useState(location.state?.activeTab || 'overview');
   const [editingPreference, setEditingPreference] = useState(null);
   const [bucketList, setBucketList] = useState([
     { id: 1, destination: 'Machu Picchu, Peru', completed: false },
@@ -111,6 +112,15 @@ const Profile = () => {
       navigate('/login');
     }
   }, [navigate]);
+
+  // Update active tab if navigated with state
+  useEffect(() => {
+    if (location.state?.activeTab) {
+      setActiveTab(location.state.activeTab);
+      // Clean up the location state so it doesn't get stuck on refresh
+      navigate(location.pathname, { replace: true, state: {} });
+    }
+  }, [location.state, navigate]);
 
   // Fetch user's packages from localStorage
   useEffect(() => {
@@ -429,7 +439,7 @@ const Profile = () => {
             {tab === 'packages' && <Map size={18} />}
             {tab === 'bookings' && <CalendarCheck size={18} />}
             {tab === 'favorites' && <Star size={18} />}
-            {tab === 'bookings' ? 'Manage Bookings' : tab.charAt(0).toUpperCase() + tab.slice(1)}
+            {tab === 'bookings' ? (user?.role === 'business' || user?.role === 'admin' ? 'Manage Bookings' : 'My Bookings') : tab.charAt(0).toUpperCase() + tab.slice(1)}
           </button>
         ))}
       </div>
@@ -667,7 +677,11 @@ const Profile = () => {
         {/* Manage Bookings Tab */}
         {activeTab === 'bookings' && (
           <div className="bookings-content">
-            <ManageBookings />
+            {(user?.role === 'business' || user?.role === 'admin') ? (
+              <ManageBookings />
+            ) : (
+              <UserBookings />
+            )}
           </div>
         )}
 
@@ -774,37 +788,37 @@ const Profile = () => {
               {/* Title */}
               <div>
                 <label style={{ display: 'block', marginBottom: '5px', fontWeight: '600', color: '#333' }}>Package Title *</label>
-                <input type="text" value={newPackage.title} onChange={(e) => setNewPackage({...newPackage, title: e.target.value})} placeholder="e.g., Himalayan Trekking Adventure" style={{ width: '100%', padding: '12px', border: '1px solid #ddd', borderRadius: '8px', fontSize: '14px', boxSizing: 'border-box' }} />
+                <input type="text" value={newPackage.title} onChange={(e) => setNewPackage({ ...newPackage, title: e.target.value })} placeholder="e.g., Himalayan Trekking Adventure" style={{ width: '100%', padding: '12px', border: '1px solid #ddd', borderRadius: '8px', fontSize: '14px', boxSizing: 'border-box' }} />
               </div>
 
               {/* Location */}
               <div>
                 <label style={{ display: 'block', marginBottom: '5px', fontWeight: '600', color: '#333' }}>Location *</label>
-                <input type="text" value={newPackage.location} onChange={(e) => setNewPackage({...newPackage, location: e.target.value})} placeholder="e.g., Manali, Dharamshala, Himachal Pradesh" style={{ width: '100%', padding: '12px', border: '1px solid #ddd', borderRadius: '8px', fontSize: '14px', boxSizing: 'border-box' }} />
+                <input type="text" value={newPackage.location} onChange={(e) => setNewPackage({ ...newPackage, location: e.target.value })} placeholder="e.g., Manali, Dharamshala, Himachal Pradesh" style={{ width: '100%', padding: '12px', border: '1px solid #ddd', borderRadius: '8px', fontSize: '14px', boxSizing: 'border-box' }} />
               </div>
 
               {/* Duration */}
               <div>
                 <label style={{ display: 'block', marginBottom: '5px', fontWeight: '600', color: '#333' }}>Duration*</label>
-                <input type="text" value={newPackage.duration} onChange={(e) => setNewPackage({...newPackage, duration: e.target.value})} placeholder="e.g., 5 Days / 4 Nights" style={{ width: '100%', padding: '12px', border: '1px solid #ddd', borderRadius: '8px', fontSize: '14px', boxSizing: 'border-box' }} />
+                <input type="text" value={newPackage.duration} onChange={(e) => setNewPackage({ ...newPackage, duration: e.target.value })} placeholder="e.g., 5 Days / 4 Nights" style={{ width: '100%', padding: '12px', border: '1px solid #ddd', borderRadius: '8px', fontSize: '14px', boxSizing: 'border-box' }} />
               </div>
 
               {/* Price */}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
                 <div>
                   <label style={{ display: 'block', marginBottom: '5px', fontWeight: '600', color: '#333' }}>Price (₹) *</label>
-                  <input type="text" value={newPackage.price} onChange={(e) => setNewPackage({...newPackage, price: e.target.value})} placeholder="e.g., ₹25,999" style={{ width: '100%', padding: '12px', border: '1px solid #ddd', borderRadius: '8px', fontSize: '14px', boxSizing: 'border-box' }} />
+                  <input type="text" value={newPackage.price} onChange={(e) => setNewPackage({ ...newPackage, price: e.target.value })} placeholder="e.g., ₹25,999" style={{ width: '100%', padding: '12px', border: '1px solid #ddd', borderRadius: '8px', fontSize: '14px', boxSizing: 'border-box' }} />
                 </div>
                 <div>
                   <label style={{ display: 'block', marginBottom: '5px', fontWeight: '600', color: '#333' }}>Original Price (₹)</label>
-                  <input type="text" value={newPackage.originalPrice} onChange={(e) => setNewPackage({...newPackage, originalPrice: e.target.value})} placeholder="e.g., ₹32,999" style={{ width: '100%', padding: '12px', border: '1px solid #ddd', borderRadius: '8px', fontSize: '14px', boxSizing: 'border-box' }} />
+                  <input type="text" value={newPackage.originalPrice} onChange={(e) => setNewPackage({ ...newPackage, originalPrice: e.target.value })} placeholder="e.g., ₹32,999" style={{ width: '100%', padding: '12px', border: '1px solid #ddd', borderRadius: '8px', fontSize: '14px', boxSizing: 'border-box' }} />
                 </div>
               </div>
 
               {/* Category */}
               <div>
                 <label style={{ display: 'block', marginBottom: '5px', fontWeight: '600', color: '#333' }}>Category</label>
-                <select value={newPackage.category} onChange={(e) => setNewPackage({...newPackage, category: e.target.value})} style={{ width: '100%', padding: '12px', border: '1px solid #ddd', borderRadius: '8px', fontSize: '14px', boxSizing: 'border-box' }}>
+                <select value={newPackage.category} onChange={(e) => setNewPackage({ ...newPackage, category: e.target.value })} style={{ width: '100%', padding: '12px', border: '1px solid #ddd', borderRadius: '8px', fontSize: '14px', boxSizing: 'border-box' }}>
                   <option>Adventure</option>
                   <option>Heritage</option>
                   <option>Nature</option>
@@ -815,7 +829,7 @@ const Profile = () => {
               {/* Description */}
               <div>
                 <label style={{ display: 'block', marginBottom: '5px', fontWeight: '600', color: '#333' }}>Description</label>
-                <textarea value={newPackage.description} onChange={(e) => setNewPackage({...newPackage, description: e.target.value})} placeholder="Describe your package..." style={{ width: '100%', padding: '12px', border: '1px solid #ddd', borderRadius: '8px', fontSize: '14px', minHeight: '100px', boxSizing: 'border-box' }} />
+                <textarea value={newPackage.description} onChange={(e) => setNewPackage({ ...newPackage, description: e.target.value })} placeholder="Describe your package..." style={{ width: '100%', padding: '12px', border: '1px solid #ddd', borderRadius: '8px', fontSize: '14px', minHeight: '100px', boxSizing: 'border-box' }} />
               </div>
 
               {/* Main Image Upload */}
@@ -833,7 +847,7 @@ const Profile = () => {
                   {newPackage.images.map((img, idx) => (
                     <div key={idx} style={{ position: 'relative' }}>
                       <img src={img} alt={`Gallery ${idx}`} style={{ width: '100%', height: '80px', objectFit: 'cover', borderRadius: '8px' }} />
-                      <button onClick={() => setNewPackage({...newPackage, images: newPackage.images.filter((_, i) => i !== idx)})} style={{ position: 'absolute', top: '-5px', right: '-5px', background: '#ff4757', color: 'white', border: 'none', borderRadius: '50%', width: '24px', height: '24px', cursor: 'pointer', fontSize: '14px' }}>×</button>
+                      <button onClick={() => setNewPackage({ ...newPackage, images: newPackage.images.filter((_, i) => i !== idx) })} style={{ position: 'absolute', top: '-5px', right: '-5px', background: '#ff4757', color: 'white', border: 'none', borderRadius: '50%', width: '24px', height: '24px', cursor: 'pointer', fontSize: '14px' }}>×</button>
                     </div>
                   ))}
                 </div>

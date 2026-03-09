@@ -2,8 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
   Home, MapPin, Briefcase, User, Shield, LogOut, Menu, X,
-  Plane, Settings
+  Plane, Settings, Bell
 } from 'lucide-react';
+import api from '../../../utils/api';
 import '../../../styles/Header.css';
 
 function Header() {
@@ -11,13 +12,42 @@ function Header() {
   const location = useLocation();
   const [user, setUser] = useState(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [pendingBookingsCount, setPendingBookingsCount] = useState(0);
 
   useEffect(() => {
     const userData = localStorage.getItem('user');
     if (userData) {
       setUser(JSON.parse(userData));
+      fetchPendingBookings();
     }
   }, [location]);
+
+  const fetchPendingBookings = async () => {
+    try {
+      // Fetch both user bookings and business bookings to show a combined badge count
+      let totalPending = 0;
+
+      const userRes = await api.get('/bookings/my-bookings');
+      if (userRes.data && userRes.data.success) {
+        const pendingUser = userRes.data.data.filter(b => b.status === "pending").length;
+        totalPending += pendingUser;
+      }
+
+      const parsedUser = JSON.parse(localStorage.getItem('user'));
+      if (parsedUser && (parsedUser.role === 'admin' || parsedUser.role === 'business')) {
+        const bizRes = await api.get('/bookings/business/my-bookings');
+        if (bizRes.data && bizRes.data.success && bizRes.data.allBookings) {
+          const pendingBiz = bizRes.data.allBookings.filter(b => b.status === "pending").length;
+          totalPending += pendingBiz;
+        }
+      }
+
+      console.log('Total pending bookings calculated:', totalPending);
+      setPendingBookingsCount(totalPending);
+    } catch (error) {
+      console.error("Error fetching pending bookings for badge", error);
+    }
+  };
 
   const handleLogout = () => {
     localStorage.removeItem('token');
@@ -63,7 +93,27 @@ function Header() {
               onClick={() => navigate(item.path)}
             >
               <item.icon size={18} />
-              <span>{item.label}</span>
+              <span style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                {item.label}
+                {item.label === 'Profile' && pendingBookingsCount > 0 && (
+                  <span className="notification-badge" style={{
+                    backgroundColor: '#ef4444',
+                    color: 'white',
+                    fontSize: '11px',
+                    fontWeight: 'bold',
+                    padding: '2px 6px',
+                    borderRadius: '10px',
+                    lineHeight: '1',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    minWidth: '20px',
+                    height: '20px'
+                  }}>
+                    {pendingBookingsCount}
+                  </span>
+                )}
+              </span>
             </button>
           ))}
         </nav>

@@ -60,8 +60,8 @@ export const createBooking = async (req, res) => {
             });
         }
 
-        // Create booking
-        const booking = await Booking.create({
+        // Create booking in database first
+        let booking = await Booking.create({
             userId: req.user.id,
             tripId,
             businessId,
@@ -84,7 +84,7 @@ export const createBooking = async (req, res) => {
 
         res.status(201).json({
             success: true,
-            message: "Booking created successfully",
+            message: "Booking requested securely and sent to owner for approval",
             data: booking,
         });
     } catch (err) {
@@ -392,7 +392,6 @@ export const cancelBooking = async (req, res) => {
         booking.cancelledAt = new Date();
         booking.cancellationReason = reason || "Cancelled by user";
         await booking.save();
-
         res.json({
             success: true,
             message: "Booking cancelled successfully",
@@ -403,6 +402,61 @@ export const cancelBooking = async (req, res) => {
         res.status(500).json({
             success: false,
             message: "Failed to cancel booking",
+        });
+    }
+};
+
+/**
+ * Process a mock payment for a booking
+ * PATCH /api/bookings/:id/pay
+ * Auth: Required (user)
+ */
+export const processMockPayment = async (req, res) => {
+    try {
+        const { id } = req.params;
+
+        const booking = await Booking.findById(id);
+
+        if (!booking) {
+            return res.status(404).json({
+                success: false,
+                message: "Booking not found",
+            });
+        }
+
+        // Check authorization (only the user who booked it can pay for it)
+        if (booking.userId.toString() !== req.user.id && req.user.role !== "admin") {
+            return res.status(403).json({
+                success: false,
+                message: "Unauthorized to pay for this booking",
+            });
+        }
+
+        // Ensure booking is in confirmed state before payment
+        if (booking.status !== "confirmed") {
+            return res.status(400).json({
+                success: false,
+                message: "Booking must be confirmed before payment can be made",
+            });
+        }
+
+        // Update booking state
+        booking.paymentStatus = "paid";
+        booking.status = "completed"; // Automatically mark as completed upon payment
+        booking.statusUpdatedAt = new Date();
+
+        await booking.save();
+
+        res.json({
+            success: true,
+            message: "Payment processed successfully",
+            data: booking,
+        });
+    } catch (err) {
+        console.error("❌ Process mock payment error:", err.message);
+        res.status(500).json({
+            success: false,
+            message: "Failed to process payment",
         });
     }
 };

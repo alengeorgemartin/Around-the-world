@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { User, LogOut, UserCircle } from 'lucide-react';
+import { User, LogOut, UserCircle, CalendarCheck } from 'lucide-react';
+import api from '../../../utils/api';
 import '../../../styles/TopNavigation.css';
 
 const TopNavigation = () => {
@@ -8,13 +9,40 @@ const TopNavigation = () => {
     const location = useLocation();
     const [user, setUser] = useState(null);
     const [showProfileMenu, setShowProfileMenu] = useState(false);
+    const [pendingBookingsCount, setPendingBookingsCount] = useState(0);
 
     useEffect(() => {
         const userData = localStorage.getItem('user');
         if (userData) {
             setUser(JSON.parse(userData));
+            fetchPendingBookings();
         }
     }, [location]);
+
+    const fetchPendingBookings = async () => {
+        try {
+            let totalPending = 0;
+
+            const userRes = await api.get('/bookings/my-bookings');
+            if (userRes.data && userRes.data.success) {
+                const pendingUser = userRes.data.data.filter(b => b.status === "pending").length;
+                totalPending += pendingUser;
+            }
+
+            const parsedUser = JSON.parse(localStorage.getItem('user'));
+            if (parsedUser && (parsedUser.role === 'admin' || parsedUser.role === 'business')) {
+                const bizRes = await api.get('/bookings/business/my-bookings');
+                if (bizRes.data && bizRes.data.success && bizRes.data.allBookings) {
+                    const pendingBiz = bizRes.data.allBookings.filter(b => b.status === "pending").length;
+                    totalPending += pendingBiz;
+                }
+            }
+
+            setPendingBookingsCount(totalPending);
+        } catch (error) {
+            console.error("Error fetching pending bookings for badge", error);
+        }
+    };
 
     const handleLogout = () => {
         localStorage.removeItem('token');
@@ -62,9 +90,32 @@ const TopNavigation = () => {
                             className="profile-btn"
                             onClick={() => setShowProfileMenu(!showProfileMenu)}
                             title={user.name}
+                            style={{ position: 'relative' }}
                         >
                             <User size={20} />
                             <span className="profile-name">{user.name}</span>
+                            {pendingBookingsCount > 0 && (
+                                <span className="notification-badge" style={{
+                                    position: 'absolute',
+                                    top: '-5px',
+                                    right: '-5px',
+                                    backgroundColor: '#ef4444',
+                                    color: 'white',
+                                    fontSize: '11px',
+                                    fontWeight: 'bold',
+                                    padding: '2px 6px',
+                                    borderRadius: '10px',
+                                    lineHeight: '1',
+                                    display: 'inline-flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    minWidth: '20px',
+                                    height: '20px',
+                                    boxShadow: '0 2px 4px rgba(239, 68, 68, 0.4)'
+                                }}>
+                                    {pendingBookingsCount}
+                                </span>
+                            )}
                         </button>
                         {showProfileMenu && (
                             <div className="profile-dropdown">
@@ -77,6 +128,34 @@ const TopNavigation = () => {
                                 >
                                     <UserCircle size={18} />
                                     <span>View Profile</span>
+                                </button>
+                                <button
+                                    className="dropdown-item"
+                                    onClick={() => {
+                                        setShowProfileMenu(false);
+                                        // Pass state so the Profile component knows to open the bookings tab
+                                        navigate("/profile", { state: { activeTab: 'bookings' } });
+                                    }}
+                                >
+                                    <CalendarCheck size={18} />
+                                    <span>Bookings</span>
+                                    {pendingBookingsCount > 0 && (
+                                        <span style={{
+                                            marginLeft: 'auto',
+                                            background: '#ef4444',
+                                            color: '#fff',
+                                            borderRadius: '50%',
+                                            width: '18px',
+                                            height: '18px',
+                                            display: 'flex',
+                                            alignItems: 'center',
+                                            justifyContent: 'center',
+                                            fontSize: '10px',
+                                            fontWeight: 'bold'
+                                        }}>
+                                            {pendingBookingsCount}
+                                        </span>
+                                    )}
                                 </button>
                                 <button
                                     className="dropdown-item logout"
