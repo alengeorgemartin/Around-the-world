@@ -1176,6 +1176,12 @@ export const undoLastChange = async (req, res) => {
     if (last.type === "append") {
       const dayObj = trip.itinerary.find(d => d.day === last.day);
       dayObj[last.period].pop();
+    } else if (last.type === "reorder") {
+      // Restore from the snapshot if it was a reorder (map drag & drop)
+      const dayObj = trip.itinerary.find(d => d.day === last.day);
+      dayObj.morning = last.snapshot.morning;
+      dayObj.afternoon = last.snapshot.afternoon;
+      dayObj.evening = last.snapshot.evening;
     }
 
     await trip.save();
@@ -1185,6 +1191,68 @@ export const undoLastChange = async (req, res) => {
     res.status(500).json({ success: false, message: err.message });
   }
 };
+
+export const reorderActivity = async (req, res) => {
+  const { id } = req.params;
+  const { day, morning, afternoon, evening } = req.body;
+
+  try {
+    const trip = await Trip.findById(id);
+    if (!trip) return res.status(404).json({ success: false, message: "Trip not found" });
+
+    // Authorization check
+    if (trip.userId.toString() !== req.user.id && req.user.role !== "admin") {
+      return res.status(403).json({ success: false, message: "Not authorized" });
+    }
+
+    const dayIndex = trip.itinerary.findIndex((d) => d.day === day);
+    if (dayIndex === -1) {
+      return res.status(404).json({ success: false, message: "Day not found in itinerary" });
+    }
+
+    const currentDayObj = trip.itinerary[dayIndex];
+
+    // Push undo snapshot BEFORE modifying
+    if (!trip.history) trip.history = [];
+    trip.history.push({
+      type: "reorder",
+      day,
+      snapshot: {
+        morning: currentDayObj.morning,
+        afternoon: currentDayObj.afternoon,
+        evening: currentDayObj.evening,
+      },
+      at: new Date(),
+    });
+
+    // Keep history trimmed to last 5
+    trip.history = trip.history.slice(-5);
+
+    // Apply the newly ordered arrays sent by the frontend drag and drop
+    currentDayObj.morning = morning;
+    currentDayObj.afternoon = afternoon;
+    currentDayObj.evening = evening;
+
+    // Recalculate route optimizer (travel distances & lines) across the newly ordered Day
+    const allActivities = [
+      ...currentDayObj.morning.map((act) => ({ ...act.toObject(), _originalPeriod: 'morning' })),
+      ...currentDayObj.afternoon.map((act) => ({ ...act.toObject(), _originalPeriod: 'afternoon' })),
+      ...currentDayObj.evening.map((act) => ({ ...act.toObject(), _originalPeriod: 'evening' }))
+    ];
+
+    // We only perform distance calculation update logic if `routeOptimizer.js` logic expects it. 
+    // Wait, the user specifically mentioned they want to preserve the physical drag order, 
+    // NOT re-run the distance optimizer (which would undo their drag drop). 
+    // So we just save the array as provided by the frontend map!
+
+    await trip.save();
+    return res.json({ success: true, data: trip });
+  } catch (err) {
+    console.error("❌ reorderActivity error:", err.message);
+    res.status(500).json({ success: false, message: "Failed to reorder activity" });
+  }
+};
+
 export const smartAdjustment = async (req, res) => {
   const { id } = req.params;
   const { day, period, context } = req.body;

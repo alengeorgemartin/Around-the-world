@@ -41,6 +41,22 @@ import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import "../styles/ViewTripNew.css";
 import BookingModal from "../components/BookingModal";
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { useSortable } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 /* ---------------- FIX LEAFLET ICON ISSUE ---------------- */
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
@@ -51,6 +67,40 @@ L.Icon.Default.mergeOptions({
   shadowUrl:
     "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
 });
+
+/* ---------------- DRAG AND DROP ITEM ---------------- */
+function SortableActivityItem({ id, activityObj, index, dayNumber, period, children }) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging
+  } = useSortable({ id: id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    zIndex: isDragging ? 50 : 1,
+    opacity: isDragging ? 0.8 : 1,
+    position: 'relative'
+  };
+
+  return (
+    <div ref={setNodeRef} style={style} className={isDragging ? "drop-shadow-2xl ring-2 ring-blue-500 rounded-xl" : ""}>
+      <div
+        {...attributes}
+        {...listeners}
+        className="absolute top-2 right-2 p-2 cursor-grab active:cursor-grabbing text-gray-400 hover:text-blue-500 z-20"
+        title="Drag to reorder"
+      >
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="9" cy="12" r="1" /><circle cx="9" cy="5" r="1" /><circle cx="9" cy="19" r="1" /><circle cx="15" cy="12" r="1" /><circle cx="15" cy="5" r="1" /><circle cx="15" cy="19" r="1" /></svg>
+      </div>
+      {children}
+    </div>
+  );
+}
 
 /* ---------------- AUTO FIT MAP ---------------- */
 // ✅ BUG 5 FIX: Guard against all-same-coords (would crash fitBounds into max zoom on wrong continent)
@@ -433,6 +483,78 @@ function ViewTrip() {
 
     setSmartSuggestions(res.data.suggestions || []);
     setLoadingSmart(false);
+  };
+
+  /* ---------------- DRAG AND DROP ---------------- */
+  const handleDragEnd = async (event) => {
+    const { active, over } = event;
+    if (!over) return;
+    if (active.id === over.id) return;
+
+    // IDs look like: `1-morning-0` (Day 1, Morning, Index 0)
+    const [activeDay, activePeriod, activeIndexId] = String(active.id).split('-');
+    const [overDay, overPeriod, overIndexId] = String(over.id).split('-');
+
+    // Cannot drag across different days currently
+    if (activeDay !== overDay) {
+      alert("Dragging activities between different days is not yet supported.");
+      return;
+    }
+
+    const activeIndex = parseInt(activeIndexId);
+    const overIndex = parseInt(overIndexId);
+
+    // Find the current day object in state
+    const dayObj = trip.itinerary.find(d => String(d.day) === activeDay);
+    if (!dayObj) return;
+
+    // Create a deep copy of the periods for optimistic UI update
+    const newMorning = [...dayObj.morning];
+    const newAfternoon = [...dayObj.afternoon];
+    const newEvening = [...dayObj.evening];
+
+    let draggedItem;
+
+    // 1. Remove from source array
+    if (activePeriod === 'morning') [draggedItem] = newMorning.splice(activeIndex, 1);
+    else if (activePeriod === 'afternoon') [draggedItem] = newAfternoon.splice(activeIndex, 1);
+    else if (activePeriod === 'evening') [draggedItem] = newEvening.splice(activeIndex, 1);
+
+    // 2. Insert into destination array
+    if (overPeriod === 'morning') newMorning.splice(overIndex, 0, draggedItem);
+    else if (overPeriod === 'afternoon') newAfternoon.splice(overIndex, 0, draggedItem);
+    else if (overPeriod === 'evening') newEvening.splice(overIndex, 0, draggedItem);
+
+    // 3. Optimistic UI Update - temporarily set the state to look instantly responsive
+    const updatedItinerary = trip.itinerary.map(d => {
+      if (String(d.day) === activeDay) {
+        return {
+          ...d,
+          morning: newMorning,
+          afternoon: newAfternoon,
+          evening: newEvening
+        };
+      }
+      return d;
+    });
+
+    setTrip({ ...trip, itinerary: updatedItinerary });
+
+    // 4. Fire to backend
+    try {
+      await api.post(`/trip/${id}/reorder-activity`, {
+        day: parseInt(activeDay),
+        morning: newMorning,
+        afternoon: newAfternoon,
+        evening: newEvening
+      });
+      // (Optional) Re-fetch to ensure sync with DB, though optimistic update is usually fine
+      // await fetchTrip(); 
+    } catch (error) {
+      console.error("Error reordering activity:", error);
+      alert("Failed to reorder activity. Changes have been reverted.");
+      await fetchTrip(); // Revert back to server state on error
+    }
   };
 
   /* ---------------- BOOKING HANDLERS ---------------- */
@@ -1129,360 +1251,389 @@ function ViewTrip() {
               <Clock className="text-purple-600" size={20} />
               <h2 className="text-xl font-bold text-gray-800">Itinerary</h2>
             </div>
-            <div className="flex-1 overflow-y-auto pr-2 space-y-6 custom-scrollbar">
-              {trip.itinerary.map(day => (
-                <div key={day.day} className="border-b border-gray-100 last:border-0 pb-6 last:pb-0">
-                  <h3 className="text-xl font-bold text-gray-800 mb-3 flex items-center gap-2">
-                    <span className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-3 py-1 rounded-lg">
-                      Day {day.day}
-                    </span>
-                    {isToday(day.day) && (
-                      <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full font-semibold">
-                        TODAY
+            <DndContext
+              sensors={useSensors(
+                useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+                useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+              )}
+              collisionDetection={closestCenter}
+              onDragEnd={handleDragEnd}
+            >
+              <div className="flex-1 overflow-y-auto pr-2 space-y-6 custom-scrollbar">
+                {trip.itinerary.map(day => (
+                  <div key={day.day} className="border-b border-gray-100 last:border-0 pb-6 last:pb-0">
+                    <h3 className="text-xl font-bold text-gray-800 mb-3 flex items-center gap-2">
+                      <span className="bg-gradient-to-r from-blue-600 to-purple-600 text-white px-3 py-1 rounded-lg">
+                        Day {day.day}
                       </span>
-                    )}
-                  </h3>
-
-                  {/* RUNNING LATE BUTTONS (Today Only) */}
-                  {isToday(day.day) && (
-                    <div className="mb-4 bg-gradient-to-r from-orange-50 to-red-50 p-4 rounded-xl border-2 border-orange-200">
-                      <div className="flex items-center gap-2 mb-2">
-                        <Clock className="text-orange-600" size={18} />
-                        <h4 className="font-bold text-gray-800">Running Late?</h4>
-                      </div>
-                      <p className="text-sm text-gray-600 mb-3">Adjust your schedule if you're behind</p>
-                      <div className="flex gap-2 flex-wrap">
-                        <button
-                          onClick={() => handleRunningLate(15, day.day)}
-                          disabled={runningLateLoading}
-                          className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-orange-400 to-orange-500 text-white rounded-lg font-semibold hover:shadow-lg transition-all duration-300 hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                          <Clock size={16} />
-                          15 min
-                        </button>
-                        <button
-                          onClick={() => handleRunningLate(30, day.day)}
-                          disabled={runningLateLoading}
-                          className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-lg font-semibold hover:shadow-lg transition-all duration-300 hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                          <Clock size={16} />
-                          30 min
-                        </button>
-                        <button
-                          onClick={() => handleRunningLate(60, day.day)}
-                          disabled={runningLateLoading}
-                          className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-lg font-semibold hover:shadow-lg transition-all duration-300 hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                          <Clock size={16} />
-                          60 min
-                        </button>
-                      </div>
-                      {runningLateLoading && (
-                        <div className="mt-3 flex items-center gap-2 text-orange-600">
-                          <div className="animate-spin rounded-full h-4 w-4 border-2 border-orange-600 border-t-transparent"></div>
-                          <span className="text-sm font-semibold">Adjusting schedule...</span>
-                        </div>
+                      {isToday(day.day) && (
+                        <span className="text-xs bg-green-100 text-green-700 px-2 py-1 rounded-full font-semibold">
+                          TODAY
+                        </span>
                       )}
-                    </div>
-                  )}
+                    </h3>
 
-                  {/* WEATHER CARD */}
-                  {trip.weatherData && trip.weatherData.length > 0 && (() => {
-                    const dayWeather = trip.weatherData.find(w => w.day === day.day);
-                    if (!dayWeather) return null;
-
-                    return (
-                      <div className="mb-4 bg-gradient-to-br from-sky-50 to-blue-50 p-3 rounded-xl border-2 border-sky-200">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-3">
-                            <div className="bg-white p-2 rounded-lg shadow-sm">
-                              {getWeatherIcon(dayWeather.condition)}
-                            </div>
-                            <div>
-                              <p className="font-semibold text-gray-800 text-sm">{dayWeather.condition}</p>
-                              <div className="flex items-center gap-2 text-xs text-gray-600">
-                                <span className="flex items-center gap-1">
-                                  <Thermometer size={12} />
-                                  {dayWeather.temperature}
-                                </span>
-                                {dayWeather.rainProbability > 20 && (
-                                  <span className="flex items-center gap-1">
-                                    <Droplets size={12} className="text-blue-500" />
-                                    {dayWeather.rainProbability}% rain
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                          <div>
-                            {getClassificationBadge(dayWeather.classification)}
-                          </div>
+                    {/* RUNNING LATE BUTTONS (Today Only) */}
+                    {isToday(day.day) && (
+                      <div className="mb-4 bg-gradient-to-r from-orange-50 to-red-50 p-4 rounded-xl border-2 border-orange-200">
+                        <div className="flex items-center gap-2 mb-2">
+                          <Clock className="text-orange-600" size={18} />
+                          <h4 className="font-bold text-gray-800">Running Late?</h4>
                         </div>
-                        {dayWeather.alerts && dayWeather.alerts.length > 0 && (
-                          <div className="mt-2 text-xs text-red-600 flex items-start gap-1">
-                            <AlertTriangle size={12} className="mt-0.5" />
-                            <span>{dayWeather.alerts.join(", ")}</span>
+                        <p className="text-sm text-gray-600 mb-3">Adjust your schedule if you're behind</p>
+                        <div className="flex gap-2 flex-wrap">
+                          <button
+                            onClick={() => handleRunningLate(15, day.day)}
+                            disabled={runningLateLoading}
+                            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-orange-400 to-orange-500 text-white rounded-lg font-semibold hover:shadow-lg transition-all duration-300 hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            <Clock size={16} />
+                            15 min
+                          </button>
+                          <button
+                            onClick={() => handleRunningLate(30, day.day)}
+                            disabled={runningLateLoading}
+                            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-lg font-semibold hover:shadow-lg transition-all duration-300 hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            <Clock size={16} />
+                            30 min
+                          </button>
+                          <button
+                            onClick={() => handleRunningLate(60, day.day)}
+                            disabled={runningLateLoading}
+                            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-red-500 to-red-600 text-white rounded-lg font-semibold hover:shadow-lg transition-all duration-300 hover:-translate-y-0.5 disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            <Clock size={16} />
+                            60 min
+                          </button>
+                        </div>
+                        {runningLateLoading && (
+                          <div className="mt-3 flex items-center gap-2 text-orange-600">
+                            <div className="animate-spin rounded-full h-4 w-4 border-2 border-orange-600 border-t-transparent"></div>
+                            <span className="text-sm font-semibold">Adjusting schedule...</span>
                           </div>
                         )}
                       </div>
-                    );
-                  })()}
+                    )}
 
-                  {["morning", "afternoon", "evening"].map(period => (
-                    <div key={period} className="mb-4">
-                      <h4 className="flex items-center gap-2 font-semibold text-gray-700 mb-2 capitalize">
-                        {getPeriodIcon(period)}
-                        {period}
-                      </h4>
+                    {/* WEATHER CARD */}
+                    {trip.weatherData && trip.weatherData.length > 0 && (() => {
+                      const dayWeather = trip.weatherData.find(w => w.day === day.day);
+                      if (!dayWeather) return null;
 
-                      <div className="space-y-2">
-                        {day[period].map((a, i) => (
-                          <div
-                            key={i}
-                            className="bg-gradient-to-r from-gray-50 to-blue-50 p-4 rounded-xl border border-gray-200 hover:border-blue-300 hover:shadow-md transition-all duration-300"
-                          >
-                            <p className="font-semibold text-gray-800 mb-1">{a.activity}</p>
-
-                            <p className="text-sm text-gray-600 mb-2">
-                              {a.description}
-                            </p>
-
-                            <div className="flex flex-wrap gap-3 text-xs text-gray-500 mb-2">
-                              {a.startTime && (
-                                <span className="flex items-center gap-1">
-                                  <Clock size={12} />
-                                  {a.startTime}
-                                </span>
-                              )}
-
-                              {a.duration && (
-                                <span className="flex items-center gap-1">
-                                  ⏱ {a.duration}
-                                </span>
-                              )}
-
-                              {a.priority && (
-                                <span className="px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full font-semibold capitalize">
-                                  {a.priority}
-                                </span>
-                              )}
-
-                              {a.status && (
-                                <span className="px-2 py-0.5 bg-green-100 text-green-700 rounded-full font-semibold capitalize">
-                                  {a.status}
-                                </span>
-                              )}
+                      return (
+                        <div className="mb-4 bg-gradient-to-br from-sky-50 to-blue-50 p-3 rounded-xl border-2 border-sky-200">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                              <div className="bg-white p-2 rounded-lg shadow-sm">
+                                {getWeatherIcon(dayWeather.condition)}
+                              </div>
+                              <div>
+                                <p className="font-semibold text-gray-800 text-sm">{dayWeather.condition}</p>
+                                <div className="flex items-center gap-2 text-xs text-gray-600">
+                                  <span className="flex items-center gap-1">
+                                    <Thermometer size={12} />
+                                    {dayWeather.temperature}
+                                  </span>
+                                  {dayWeather.rainProbability > 20 && (
+                                    <span className="flex items-center gap-1">
+                                      <Droplets size={12} className="text-blue-500" />
+                                      {dayWeather.rainProbability}% rain
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
                             </div>
-
-                            {a.placeUrl && (
-                              <a
-                                href={a.placeUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="inline-block text-sm text-blue-600 hover:underline"
-                              >
-                                📍 View on Map
-                              </a>
-                            )}
-
-
-                            <div className="flex gap-2 flex-wrap">
-                              <button
-                                onClick={() =>
-                                  setActiveEdit({
-                                    day: day.day,
-                                    period,
-                                    activity: a,
-                                  })
-                                }
-                                className="flex items-center gap-1 px-3 py-1 bg-blue-100 text-blue-700 rounded-lg text-sm font-medium hover:bg-blue-200 transition-colors"
-                              >
-                                <Replace size={14} />
-                                Replace
-                              </button>
-
-                              <button
-                                onClick={() =>
-                                  loadAdditionalSuggestions(day.day, period, a, i)
-                                }
-                                className="flex items-center gap-1 px-3 py-1 bg-purple-100 text-purple-700 rounded-lg text-sm font-medium hover:bg-purple-200 transition-colors"
-                                title="Get additional nearby activities to add"
-                              >
-                                <Sparkles size={14} />
-                                Add More
-                              </button>
-
-                              <button
-                                onClick={() => smartAdjust(day.day, period, i)}
-                                className="flex items-center gap-1 px-3 py-1 bg-orange-100 text-orange-700 rounded-lg text-sm font-medium hover:bg-orange-200 transition-colors"
-                                title="Get better alternatives for this time slot"
-                              >
-                                <Wand2 size={14} />
-                                Better Options
-                              </button>
-
-                              <button
-                                onClick={() => deleteActivity(day.day, period, i)}
-                                className="flex items-center gap-1 px-3 py-1 bg-red-100 text-red-700 rounded-lg text-sm font-medium hover:bg-red-200 transition-colors"
-                                title="Delete this activity"
-                              >
-                                <Trash2 size={14} />
-                                Delete
-                              </button>
+                            <div>
+                              {getClassificationBadge(dayWeather.classification)}
                             </div>
-
-                            {loadingExtras && activeSuggestion?.day === day.day && activeSuggestion?.period === period && activeSuggestion?.activityIndex === i && (
-                              <div className="text-xs text-gray-500 mt-2 flex items-center gap-1">
-                                <div className="animate-spin h-3 w-3 border-2 border-purple-600 border-t-transparent rounded-full"></div>
-                                Finding nearby ideas...
-                              </div>
-                            )}
-
-                            {extraSuggestions.length > 0 && activeSuggestion?.day === day.day && activeSuggestion?.period === period && activeSuggestion?.activityIndex === i && (
-                              <div className="mt-3 border-2 border-purple-200 rounded-lg p-3 bg-purple-50">
-                                <div className="flex justify-between items-center mb-2">
-                                  <p className="text-sm font-semibold flex items-center gap-1 text-purple-700">
-                                    <Sparkles size={16} />
-                                    You might also like
-                                  </p>
-                                  <button
-                                    onClick={() => {
-                                      setExtraSuggestions([]);
-                                      setActiveSuggestion(null);
-                                    }}
-                                    className="text-purple-400 hover:text-purple-600 transition-colors"
-                                    title="Close suggestions"
-                                  >
-                                    <X size={18} />
-                                  </button>
-                                </div>
-
-                                <div className="space-y-2">
-                                  {extraSuggestions.map((s, idx) => (
-                                    <div
-                                      key={idx}
-                                      className="flex justify-between items-start gap-2 bg-white p-2 rounded-lg"
-                                    >
-                                      <span className="text-sm flex-1">
-                                        <strong className="text-gray-800">{s.activity}</strong>
-                                        <span className="text-gray-600"> • {s.reason}</span>
-                                      </span>
-
-                                      <button
-                                        onClick={() =>
-                                          addActivity(day.day, period, s)
-                                        }
-                                        className="flex items-center gap-1 px-2 py-1 bg-green-500 text-white rounded-md text-xs font-medium hover:bg-green-600 transition-colors whitespace-nowrap"
-                                      >
-                                        <Plus size={12} />
-                                        Add
-                                      </button>
-                                    </div>
-                                  ))}
-                                </div>
-                              </div>
-                            )}
-
-                            {loadingSmart && activeSmartSuggestion?.day === day.day && activeSmartSuggestion?.period === period && activeSmartSuggestion?.activityIndex === i && (
-                              <div className="text-xs text-gray-500 mt-2 flex items-center gap-1">
-                                <div className="animate-spin h-3 w-3 border-2 border-orange-600 border-t-transparent rounded-full"></div>
-                                AI is finding smart alternatives...
-                              </div>
-                            )}
-
-                            {smartSuggestions.length > 0 && activeSmartSuggestion?.day === day.day && activeSmartSuggestion?.period === period && activeSmartSuggestion?.activityIndex === i && (
-                              <div className="mt-3 border-2 border-orange-200 rounded-lg p-3 bg-orange-50">
-                                <div className="flex justify-between items-center mb-2">
-                                  <p className="text-sm font-semibold flex items-center gap-1 text-orange-700">
-                                    <Wand2 size={16} />
-                                    Better Alternatives for {period}
-                                  </p>
-                                  <button
-                                    onClick={() => {
-                                      setSmartSuggestions([]);
-                                      setActiveSmartSuggestion(null);
-                                    }}
-                                    className="text-orange-400 hover:text-orange-600 transition-colors"
-                                    title="Close suggestions"
-                                  >
-                                    <X size={18} />
-                                  </button>
-                                </div>
-
-                                <div className="space-y-2">
-                                  {smartSuggestions.map((s, idx) => (
-                                    <div
-                                      key={idx}
-                                      className="flex justify-between items-start gap-2 bg-white p-2 rounded-lg"
-                                    >
-                                      <span className="text-sm flex-1">
-                                        <strong className="text-gray-800">{s.activity}</strong>
-                                        {s.type && <span className="text-orange-600 text-xs ml-1">[{s.type}]</span>}
-                                        <span className="text-gray-600"> • {s.reason}</span>
-                                      </span>
-
-                                      <button
-                                        onClick={() =>
-                                          addActivity(day.day, period, s)
-                                        }
-                                        className="flex items-center gap-1 px-2 py-1 bg-green-500 text-white rounded-md text-xs font-medium hover:bg-green-600 transition-colors whitespace-nowrap"
-                                      >
-                                        <Plus size={12} />
-                                        Add
-                                      </button>
-                                    </div>
-                                  ))}
-                                </div>
-                              </div>
-                            )}
-
-                            {/* TRAVEL CONNECTOR UI */}
-                            {a.travelToNext && i < day[period].length - 1 && (
-                              <div className="flex flex-col items-center my-2 select-none relative z-10 w-full" style={{ minHeight: "40px" }}>
-                                <div className="w-1 h-3 bg-blue-200 rounded-full mb-1"></div>
-                                <div className="bg-white border border-blue-200 text-blue-700 text-xs font-semibold px-3 py-1.5 rounded-full shadow-sm flex items-center gap-1.5">
-                                  <span className="text-sm">{a.travelToNext.icon}</span>
-                                  <span>{a.travelToNext.mode}</span>
-                                  <span className="text-gray-400 mx-0.5">•</span>
-                                  <span>{a.travelToNext.time}</span>
-                                  <span className="text-gray-400 mx-0.5">•</span>
-                                  <span className="text-gray-500 font-medium">{a.travelToNext.distance}</span>
-                                </div>
-                                <div className="w-1 h-3 bg-blue-200 rounded-full mt-1"></div>
-                              </div>
-                            )}
-
-                            {a.travelToNext && i === day[period].length - 1 && (() => {
-                              // Determine if there is a next period on this day
-                              const hasNextPeriod = (period === 'morning' && (day.afternoon.length > 0 || day.evening.length > 0)) ||
-                                (period === 'afternoon' && day.evening.length > 0);
-
-                              if (!hasNextPeriod) return null;
-
-                              return (
-                                <div className="flex flex-col items-center my-2 select-none relative z-10 w-full" style={{ minHeight: "40px" }}>
-                                  <div className="w-1 h-3 bg-indigo-200 rounded-full mb-1"></div>
-                                  <div className="bg-indigo-50 border border-indigo-200 text-indigo-700 text-xs font-semibold px-3 py-1.5 rounded-full shadow-sm flex items-center gap-1.5">
-                                    <span className="text-sm">{a.travelToNext.icon}</span>
-                                    <span>{a.travelToNext.mode}</span>
-                                    <span className="text-gray-400 mx-0.5">•</span>
-                                    <span>{a.travelToNext.time}</span>
-                                    <span className="text-gray-400 mx-0.5">•</span>
-                                    <span className="text-gray-500 font-medium">{a.travelToNext.distance}</span>
-                                  </div>
-                                  <div className="w-1 h-3 bg-indigo-200 rounded-full mt-1"></div>
-                                </div>
-                              )
-                            })()}
-
                           </div>
-                        ))}
+                          {dayWeather.alerts && dayWeather.alerts.length > 0 && (
+                            <div className="mt-2 text-xs text-red-600 flex items-start gap-1">
+                              <AlertTriangle size={12} className="mt-0.5" />
+                              <span>{dayWeather.alerts.join(", ")}</span>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })()}
+
+                    {["morning", "afternoon", "evening"].map(period => (
+                      <div key={period} className="mb-4">
+                        <h4 className="flex items-center gap-2 font-semibold text-gray-700 mb-2 capitalize">
+                          {getPeriodIcon(period)}
+                          {period}
+                        </h4>
+
+                        <SortableContext
+                          items={day[period].map((a, i) => `${day.day}-${period}-${i}`)}
+                          strategy={verticalListSortingStrategy}
+                        >
+                          <div className="space-y-2">
+                            {day[period].map((a, i) => {
+                              const itemId = `${day.day}-${period}-${i}`;
+                              return (
+                                <SortableActivityItem
+                                  key={itemId}
+                                  id={itemId}
+                                  activityObj={a}
+                                  index={i}
+                                  dayNumber={day.day}
+                                  period={period}
+                                >
+                                  <div
+                                    className="bg-gradient-to-r from-gray-50 to-blue-50 p-4 rounded-xl border border-gray-200 hover:border-blue-300 hover:shadow-md transition-all duration-300"
+                                  >
+                                    <p className="font-semibold text-gray-800 mb-1">{a.activity}</p>
+
+                                    <p className="text-sm text-gray-600 mb-2 mt-4 pr-6">
+                                      {a.description}
+                                    </p>
+
+                                    <div className="flex flex-wrap gap-3 text-xs text-gray-500 mb-2">
+                                      {a.startTime && (
+                                        <span className="flex items-center gap-1">
+                                          <Clock size={12} />
+                                          {a.startTime}
+                                        </span>
+                                      )}
+
+                                      {a.duration && (
+                                        <span className="flex items-center gap-1">
+                                          ⏱ {a.duration}
+                                        </span>
+                                      )}
+
+                                      {a.priority && (
+                                        <span className="px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full font-semibold capitalize">
+                                          {a.priority}
+                                        </span>
+                                      )}
+
+                                      {a.status && (
+                                        <span className="px-2 py-0.5 bg-green-100 text-green-700 rounded-full font-semibold capitalize">
+                                          {a.status}
+                                        </span>
+                                      )}
+                                    </div>
+
+                                    {a.placeUrl && (
+                                      <a
+                                        href={a.placeUrl}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="inline-block text-sm text-blue-600 hover:underline mb-2 z-10 relative"
+                                      >
+                                        📍 View on Map
+                                      </a>
+                                    )}
+
+
+                                    <div className="flex gap-2 flex-wrap z-10 relative">
+                                      <button
+                                        onClick={() =>
+                                          setActiveEdit({
+                                            day: day.day,
+                                            period,
+                                            activity: a,
+                                          })
+                                        }
+                                        className="flex items-center gap-1 px-3 py-1 bg-blue-100 text-blue-700 rounded-lg text-sm font-medium hover:bg-blue-200 transition-colors"
+                                      >
+                                        <Replace size={14} />
+                                        Replace
+                                      </button>
+
+                                      <button
+                                        onClick={() =>
+                                          loadAdditionalSuggestions(day.day, period, a, i)
+                                        }
+                                        className="flex items-center gap-1 px-3 py-1 bg-purple-100 text-purple-700 rounded-lg text-sm font-medium hover:bg-purple-200 transition-colors"
+                                        title="Get additional nearby activities to add"
+                                      >
+                                        <Sparkles size={14} />
+                                        Add More
+                                      </button>
+
+                                      <button
+                                        onClick={() => smartAdjust(day.day, period, i)}
+                                        className="flex items-center gap-1 px-3 py-1 bg-orange-100 text-orange-700 rounded-lg text-sm font-medium hover:bg-orange-200 transition-colors"
+                                        title="Get better alternatives for this time slot"
+                                      >
+                                        <Wand2 size={14} />
+                                        Better Options
+                                      </button>
+
+                                      <button
+                                        onClick={() => deleteActivity(day.day, period, i)}
+                                        className="flex items-center gap-1 px-3 py-1 bg-red-100 text-red-700 rounded-lg text-sm font-medium hover:bg-red-200 transition-colors"
+                                        title="Delete this activity"
+                                      >
+                                        <Trash2 size={14} />
+                                        Delete
+                                      </button>
+                                    </div>
+
+                                    {loadingExtras && activeSuggestion?.day === day.day && activeSuggestion?.period === period && activeSuggestion?.activityIndex === i && (
+                                      <div className="text-xs text-gray-500 mt-2 flex items-center gap-1">
+                                        <div className="animate-spin h-3 w-3 border-2 border-purple-600 border-t-transparent rounded-full"></div>
+                                        Finding nearby ideas...
+                                      </div>
+                                    )}
+
+                                    {extraSuggestions.length > 0 && activeSuggestion?.day === day.day && activeSuggestion?.period === period && activeSuggestion?.activityIndex === i && (
+                                      <div className="mt-3 border-2 border-purple-200 rounded-lg p-3 bg-purple-50 z-10 relative">
+                                        <div className="flex justify-between items-center mb-2">
+                                          <p className="text-sm font-semibold flex items-center gap-1 text-purple-700">
+                                            <Sparkles size={16} />
+                                            You might also like
+                                          </p>
+                                          <button
+                                            onClick={() => {
+                                              setExtraSuggestions([]);
+                                              setActiveSuggestion(null);
+                                            }}
+                                            className="text-purple-400 hover:text-purple-600 transition-colors"
+                                            title="Close suggestions"
+                                          >
+                                            <X size={18} />
+                                          </button>
+                                        </div>
+
+                                        <div className="space-y-2">
+                                          {extraSuggestions.map((s, idx) => (
+                                            <div
+                                              key={idx}
+                                              className="flex justify-between items-start gap-2 bg-white p-2 rounded-lg"
+                                            >
+                                              <span className="text-sm flex-1">
+                                                <strong className="text-gray-800">{s.activity}</strong>
+                                                <span className="text-gray-600"> • {s.reason}</span>
+                                              </span>
+
+                                              <button
+                                                onClick={() =>
+                                                  addActivity(day.day, period, s)
+                                                }
+                                                className="flex items-center gap-1 px-2 py-1 bg-green-500 text-white rounded-md text-xs font-medium hover:bg-green-600 transition-colors whitespace-nowrap"
+                                              >
+                                                <Plus size={12} />
+                                                Add
+                                              </button>
+                                            </div>
+                                          ))}
+                                        </div>
+                                      </div>
+                                    )}
+
+                                    {loadingSmart && activeSmartSuggestion?.day === day.day && activeSmartSuggestion?.period === period && activeSmartSuggestion?.activityIndex === i && (
+                                      <div className="text-xs text-gray-500 mt-2 flex items-center gap-1">
+                                        <div className="animate-spin h-3 w-3 border-2 border-orange-600 border-t-transparent rounded-full"></div>
+                                        AI is finding smart alternatives...
+                                      </div>
+                                    )}
+
+                                    {smartSuggestions.length > 0 && activeSmartSuggestion?.day === day.day && activeSmartSuggestion?.period === period && activeSmartSuggestion?.activityIndex === i && (
+                                      <div className="mt-3 border-2 border-orange-200 rounded-lg p-3 bg-orange-50 z-10 relative">
+                                        <div className="flex justify-between items-center mb-2">
+                                          <p className="text-sm font-semibold flex items-center gap-1 text-orange-700">
+                                            <Wand2 size={16} />
+                                            Better Alternatives for {period}
+                                          </p>
+                                          <button
+                                            onClick={() => {
+                                              setSmartSuggestions([]);
+                                              setActiveSmartSuggestion(null);
+                                            }}
+                                            className="text-orange-400 hover:text-orange-600 transition-colors"
+                                            title="Close suggestions"
+                                          >
+                                            <X size={18} />
+                                          </button>
+                                        </div>
+
+                                        <div className="space-y-2">
+                                          {smartSuggestions.map((s, idx) => (
+                                            <div
+                                              key={idx}
+                                              className="flex justify-between items-start gap-2 bg-white p-2 rounded-lg"
+                                            >
+                                              <span className="text-sm flex-1">
+                                                <strong className="text-gray-800">{s.activity}</strong>
+                                                {s.type && <span className="text-orange-600 text-xs ml-1">[{s.type}]</span>}
+                                                <span className="text-gray-600"> • {s.reason}</span>
+                                              </span>
+
+                                              <button
+                                                onClick={() =>
+                                                  addActivity(day.day, period, s)
+                                                }
+                                                className="flex items-center gap-1 px-2 py-1 bg-green-500 text-white rounded-md text-xs font-medium hover:bg-green-600 transition-colors whitespace-nowrap"
+                                              >
+                                                <Plus size={12} />
+                                                Add
+                                              </button>
+                                            </div>
+                                          ))}
+                                        </div>
+                                      </div>
+                                    )}
+
+                                    {/* TRAVEL CONNECTOR UI */}
+                                    {a.travelToNext && i < day[period].length - 1 && (
+                                      <div className="flex flex-col items-center my-2 select-none relative z-10 w-full" style={{ minHeight: "40px" }}>
+                                        <div className="w-1 h-3 bg-blue-200 rounded-full mb-1"></div>
+                                        <div className="bg-white border border-blue-200 text-blue-700 text-xs font-semibold px-3 py-1.5 rounded-full shadow-sm flex items-center gap-1.5">
+                                          <span className="text-sm">{a.travelToNext.icon}</span>
+                                          <span>{a.travelToNext.mode}</span>
+                                          <span className="text-gray-400 mx-0.5">•</span>
+                                          <span>{a.travelToNext.time}</span>
+                                          <span className="text-gray-400 mx-0.5">•</span>
+                                          <span className="text-gray-500 font-medium">{a.travelToNext.distance}</span>
+                                        </div>
+                                        <div className="w-1 h-3 bg-blue-200 rounded-full mt-1"></div>
+                                      </div>
+                                    )}
+
+                                    {a.travelToNext && i === day[period].length - 1 && (() => {
+                                      let hasNextPeriod = false;
+                                      if (trip?.itinerary) {
+                                        const currentD = trip.itinerary.find(d => d.day === day.day);
+                                        if (currentD) {
+                                          hasNextPeriod = (period === 'morning' && (currentD.afternoon?.length > 0 || currentD.evening?.length > 0)) ||
+                                            (period === 'afternoon' && currentD.evening?.length > 0);
+                                        }
+                                      }
+
+                                      if (!hasNextPeriod) return null;
+
+                                      return (
+                                        <div className="flex flex-col items-center my-2 select-none relative z-10 w-full" style={{ minHeight: "40px" }}>
+                                          <div className="w-1 h-3 bg-indigo-200 rounded-full mb-1"></div>
+                                          <div className="bg-indigo-50 border border-indigo-200 text-indigo-700 text-xs font-semibold px-3 py-1.5 rounded-full shadow-sm flex items-center gap-1.5">
+                                            <span className="text-sm">{a.travelToNext.icon}</span>
+                                            <span>{a.travelToNext.mode}</span>
+                                            <span className="text-gray-400 mx-0.5">•</span>
+                                            <span>{a.travelToNext.time}</span>
+                                            <span className="text-gray-400 mx-0.5">•</span>
+                                            <span className="text-gray-500 font-medium">{a.travelToNext.distance}</span>
+                                          </div>
+                                          <div className="w-1 h-3 bg-indigo-200 rounded-full mt-1"></div>
+                                        </div>
+                                      )
+                                    })()}
+                                  </div>
+                                </SortableActivityItem>
+                              );
+                            })}
+                          </div>
+                        </SortableContext>
                       </div>
-                    </div>
-                  ))}
-                </div>
-              ))}
-            </div>
+                    ))}
+                  </div>
+                ))}
+              </div>
+            </DndContext>
           </div>
         </div>
       </div>

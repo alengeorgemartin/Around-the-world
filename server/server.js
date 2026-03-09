@@ -21,7 +21,7 @@ import { additionalSuggestions } from "./aiController.js";
 import { appendActivity } from "./aiController.js";
 import { deleteActivity } from "./aiController.js";
 import { smartAdjustment } from "./aiController.js";
-import { undoLastChange } from "./aiController.js";
+import { undoLastChange, reorderActivity } from "./aiController.js";
 import { generateTripPDF } from "./services/pdfGenerator.js";
 
 
@@ -162,6 +162,11 @@ app.post(
   "/api/trip/:id/undo",
   protect(["user", "admin"]),
   undoLastChange
+);
+app.post(
+  "/api/trip/:id/reorder-activity",
+  protect(["user", "admin"]),
+  reorderActivity
 );
 app.post(
   "/api/trip/:id/smart-adjustment",
