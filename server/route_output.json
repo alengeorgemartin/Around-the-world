@@ -1,0 +1,62 @@
+[
+  {
+    "activityName": "Hotel Start",
+    "geo": {
+      "lat": 48.8566,
+      "lng": 2.3522
+    },
+    "timeWindow": {
+      "open": "00:00",
+      "close": "23:59"
+    },
+    "durationMinutes": 0
+  },
+  {
+    "activityName": "Morning Museum",
+    "geo": {
+      "lat": 48.8606,
+      "lng": 2.3376
+    },
+    "timeWindow": {
+      "open": "09:00",
+      "close": "18:00"
+    },
+    "durationMinutes": 180
+  },
+  {
+    "activityName": "Afternoon Park",
+    "geo": {
+      "lat": 48.85,
+      "lng": 2.32
+    },
+    "timeWindow": {
+      "open": "08:00",
+      "close": "20:00"
+    },
+    "durationMinutes": 120
+  },
+  {
+    "activityName": "Nightclub",
+    "geo": {
+      "lat": 48.86,
+      "lng": 2.338
+    },
+    "timeWindow": {
+      "open": "22:00",
+      "close": "04:00"
+    },
+    "durationMinutes": 120
+  },
+  {
+    "activityName": "Lunch Cafe",
+    "geo": {
+      "lat": 48.87,
+      "lng": 2.34
+    },
+    "timeWindow": {
+      "open": "11:00",
+      "close": "15:00"
+    },
+    "durationMinutes": 60
+  }
+]

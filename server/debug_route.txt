@@ -1,0 +1,22 @@
+Start Time: 540
+
+From: Hotel Start (Current Time: 540)
+  -> Morning Museum: dist=1.16, arv=542, wait=0, score=1.16, close=1080
+  -> Nightclub: dist=1.11, arv=542, wait=778, score=390.00, close=1680
+  -> Lunch Cafe: dist=1.74, arv=543, wait=117, score=60.00, close=900
+  -> Afternoon Park: dist=2.47, arv=545, wait=0, score=2.47, close=1200
+
+From: Morning Museum (Current Time: 722.3140093949629)
+  -> Nightclub: dist=0.07, arv=722, wait=598, score=298.84, close=1680
+  -> Lunch Cafe: dist=1.06, arv=724, wait=0, score=1.06, close=900
+  -> Afternoon Park: dist=1.75, arv=726, wait=0, score=1.75, close=1200
+
+From: Lunch Cafe (Current Time: 784.4337544846217)
+  -> Nightclub: dist=1.12, arv=787, wait=533, score=267.78, close=1680
+  -> Afternoon Park: dist=2.66, arv=790, wait=0, score=2.66, close=1200
+
+From: Afternoon Park (Current Time: 909.7578138857576)
+  -> Nightclub: dist=1.72, arv=913, wait=407, score=205.12, close=1680
+
+Results:
+Hotel Start -> Morning Museum -> Lunch Cafe -> Afternoon Park -> Nightclub

@@ -18,7 +18,8 @@ import {
   estimateActivityCost,
   comparePlans,
   buildBudgetBreakdown,
-  allocateBudget
+  allocateBudget,
+  computeUtility
 } from "./services/budgetOptimizer.js";
 import { buildSeasonalContext } from "./services/seasonEngine.js";
 import timeEngine from "./utils/timeEngine.js";
@@ -182,6 +183,8 @@ Return ONLY valid JSON in this format:
   "placeUrl": "https://...",
   "startTime": "time",
   "duration": "duration",
+  "timeWindow": { "open": "HH:MM", "close": "HH:MM" },
+  "durationMinutes": number,
   "estimatedCost": number
 }
 
@@ -193,7 +196,9 @@ CRITICAL INSTRUCTIONS:
 5. placeUrl: Wikipedia URL like https://en.wikipedia.org/wiki/${activityName.replace(/\s+/g, '_')} OR Google Maps
 6. startTime: ${period === 'morning' ? '9:00 AM' : period === 'afternoon' ? '2:00 PM' : '6:00 PM'}
 7. duration: realistic visit time (e.g., "2 hours", "1-2 hours")
-8. estimatedCost: A highly accurate numeric value in ₹ for the total expected cost per person to do this activity. Include entry fees, standard tickets, and gear rentals (e.g. trekking gear, surfboards, adventure sports fees). If it is a free public area with no rentals, use 0.
+8. timeWindow: Estimated local operating hours in 24-hour HH:MM format (e.g., {"open": "09:00", "close": "18:00"}). Use "00:00" and "23:59" for 24-hour outdoor places.
+9. durationMinutes: integer representing expected visit time in minutes (e.g., 120).
+10. estimatedCost: A highly accurate numeric value in ₹ for the total expected cost per person to do this activity. Include entry fees, standard tickets, and gear rentals (e.g. trekking gear, surfboards, adventure sports fees). If it is a free public area with no rentals, use 0.
 
 Context:
 - Budget: ${budget}
@@ -207,7 +212,8 @@ Return ONLY the JSON. No explanations.
       const aiResponse = await callGemini(prompt, undefined, {
         maxOutputTokens: 1000,
         jsonMode: true,
-        operationName: 'fillActivityDetails'
+        operationName: 'fillActivityDetails',
+        useCache: attempt === 1
       });
       const parsed = extractJSON(aiResponse);
 
@@ -235,6 +241,8 @@ Return ONLY the JSON. No explanations.
     placeUrl: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(activityName + ', ' + location)}`,
     startTime: period === 'morning' ? '9:00 AM' : period === 'afternoon' ? '2:00 PM' : '6:00 PM',
     duration: '1-2 hours',
+    timeWindow: { open: "09:00", close: "18:00" },
+    durationMinutes: 120,
   };
 }
 
@@ -332,39 +340,42 @@ async function generateAlternativeActivity({
   preferenceBias,
 }) {
   const prompt = `
-Return ONLY valid JSON.
+Name ONE real tourist attraction, restaurant, or activity in ${location} that is DIFFERENT from "${currentActivity}".
+It should ideally be a good alternative to "${currentActivity}" or located nearby.
+Suitable for ${period || "any"} time of day.
+Align with preferences: ${preferenceBias}
 
-{
-  "activity": string,
-  "address": string,
-  "description": string,
-  "placeUrl": string,
-  "startTime": string,
-  "duration": string,
-  "travelFromPrevious": string
-}
-
-Rules:
-- Must be DIFFERENT from "${currentActivity}"
-- Must be near "${currentActivity}" in ${location}
-- Align with preferences: ${preferenceBias}
-- Real place only
-- Description under 25 words
-- URL must start with https://
+Return ONLY the name of the place as a single line of plain text. 
+Do NOT include quotes, JSON formatting, descriptions, or any extra text.
 `;
 
-  for (let i = 0; i < 2; i++) {
+  let lastAiResponse = "";
+  for (let i = 0; i < 3; i++) {
     const aiResponse = await callGemini(prompt, undefined, {
-      maxOutputTokens: 1000,
-      jsonMode: true,
-      operationName: 'generateAlternativeActivity'
+      maxOutputTokens: 100,
+      jsonMode: false,
+      operationName: 'generateAlternativeActivity',
+      useCache: i === 0
     });
+    
+    lastAiResponse = aiResponse;
+    if (!aiResponse) continue;
+    
+    // Clean up the text: remove quotes, braces, newlines
+    let topActivity = aiResponse.trim().replace(/^"|"$/g, '').replace(/\n/g, ' ').replace(/[{}]/g, '');
+    
+    // Just in case it still output JSON:
     const parsed = extractJSON(aiResponse);
-    if (parsed?.activity && parsed.activity !== currentActivity) {
-      return parsed;
+    if (parsed && parsed.activity) {
+      topActivity = parsed.activity;
+    }
+
+    if (topActivity && topActivity !== currentActivity && !topActivity.toLowerCase().includes("alternative near")) {
+      return { activity: topActivity };
     }
   }
 
+  console.warn("⚠️ Alternative activity generation failed. Last response:", lastAiResponse);
   return null;
 }
 
@@ -393,10 +404,13 @@ Rules:
   const aiResponse = await callGemini(prompt, undefined, {
     maxOutputTokens: 1000,
     jsonMode: true,
-    operationName: 'generateActivitySuggestions'
+    operationName: 'generateActivitySuggestions',
+    useCache: false
   });
   const parsed = extractJSON(aiResponse);
-  return Array.isArray(parsed?.suggestions) ? parsed.suggestions : [];
+  if (Array.isArray(parsed?.suggestions)) return parsed.suggestions;
+  if (Array.isArray(parsed)) return parsed;
+  return [];
 }
 
 async function generateAdditionalSuggestions({
@@ -424,10 +438,13 @@ Rules:
   const aiResponse = await callGemini(prompt, undefined, {
     maxOutputTokens: 1000,
     jsonMode: true,
-    operationName: 'generateAdditionalSuggestions'
+    operationName: 'generateAdditionalSuggestions',
+    useCache: false
   });
   const parsed = extractJSON(aiResponse);
-  return Array.isArray(parsed?.suggestions) ? parsed.suggestions : [];
+  if (Array.isArray(parsed?.suggestions)) return parsed.suggestions;
+  if (Array.isArray(parsed)) return parsed;
+  return [];
 }
 
 /* ======================================================
@@ -595,7 +612,8 @@ Seed: ${seed}
       const aiResponse = await callGemini(outlinePrompt, undefined, {
         maxOutputTokens: 3000,
         jsonMode: true,
-        operationName: 'generateTravelPlanOutline'
+        operationName: 'generateTravelPlanOutline',
+        useCache: i === 0
       });
       lastResponse = aiResponse;
       console.log(`🔍 Outline attempt ${i + 1}:`, aiResponse?.substring(0, 200));
@@ -935,6 +953,29 @@ Seed: ${seed}
             // Run comparison (greedy vs knapsack) for research paper
             const { greedy, knapsack, comparison } = comparePlans(allActivities, actBudget, preferences);
 
+            // ── Write computed utilityScores back to each activity in itinerary ──
+            // comparePlans() calculates utilityScore internally but previously never persisted it.
+            // Build a name->score map from all activities.
+            const scoreMap = new Map();
+            allActivities.forEach(a => {
+              const score = computeUtility(a, preferences);
+              scoreMap.set(a.activity, parseFloat(score.toFixed(6)));
+            });
+
+            // Stamp each activity in the itinerary with its real utility score
+            let scoreWritten = 0;
+            for (const day of trip.itinerary) {
+              for (const period of ['morning', 'afternoon', 'evening']) {
+                for (const act of (day[period] || [])) {
+                  if (scoreMap.has(act.activity)) {
+                    act.utilityScore = scoreMap.get(act.activity);
+                    scoreWritten++;
+                  }
+                }
+              }
+            }
+            console.log(`📊 [BudgetOptimizer] Stamped utilityScore on ${scoreWritten} activities`);
+
             // Use knapsack as the higher-quality selection
             const finalSatisfaction = knapsack.satisfactionScore;
 
@@ -987,7 +1028,7 @@ Seed: ${seed}
 export const replaceActivity = async (req, res) => {
   try {
     const { id } = req.params;
-    const { day, period, currentActivity, preferenceHint } = req.body;
+    const { day, period, currentActivity, preferenceHint, activityIndex } = req.body;
 
     const trip = await Trip.findById(id);
     if (!trip) return res.status(404).json({ success: false });
@@ -998,30 +1039,55 @@ export const replaceActivity = async (req, res) => {
     const preferenceBias = buildPreferenceBias(trip.preferences);
     const dayObj = trip.itinerary.find(d => d.day === day);
 
-    const newActivity =
-      (await generateAlternativeActivity({
-        location: trip.location,
-        currentActivity,
-        period,
-        preferenceBias: preferenceHint
-          ? `${preferenceBias}. ${preferenceHint}`
-          : preferenceBias,
-      })) || {
-        activity: `Alternative near ${currentActivity}`,
-        address: trip.location,
-        description: "Nearby alternative experience",
-        placeUrl: "https://www.google.com/maps",
-        startTime: "Flexible",
-        duration: "1–2 hours",
-        travelFromPrevious: "Short travel",
-      };
+    // Validate period and index, with a fallback to 0 for older clients
+    if (!dayObj || !dayObj[period]) {
+        return res.status(400).json({ success: false, message: "Invalid day or period" });
+    }
+    const idx = activityIndex !== undefined ? activityIndex : 0;
+    if (idx < 0 || idx >= dayObj[period].length) {
+        return res.status(400).json({ success: false, message: "Invalid activity index" });
+    }
 
-    newActivity.geo =
-      (await geocodePlace(newActivity.activity, trip.location)) ||
-      { lat: 10.8505, lng: 76.2711 };
+    // Step 1: Get an alternative activity name
+    const alternative = await generateAlternativeActivity({
+      location: trip.location,
+      currentActivity,
+      period,
+      preferenceBias: preferenceHint
+        ? `${preferenceBias}. ${preferenceHint}`
+        : preferenceBias,
+    });
 
-    dayObj[period][0] = newActivity;
+    let activityName = alternative?.activity;
+    if (!activityName) {
+      // Deep fallback if AI completely fails to give an alternative. 
+      const shortLocation = trip.location.split(',')[0].trim();
+      activityName = `A popular tourist attraction in ${shortLocation}`;
+    }
+    console.log(`🔄 Replacing "${currentActivity}" with "${activityName}" on Day ${day} ${period}`);
+
+    // Step 2: Enrich it fully using fillActivityDetails (same as main generation loop)
+    const enriched = await fillActivityDetails({
+      activityName,
+      location: trip.location,
+      period,
+      budget: trip.budget,
+      travelWith: trip.travelWith,
+      preferenceBias: preferenceHint ? `${preferenceBias}. ${preferenceHint}` : preferenceBias,
+    });
+
+    // Step 3: Real geocoding
+    enriched.geo = (await geocodePlace(enriched.activity, trip.location)) || null;
+
+    // Step 4: Budget cost estimate
+    const { estimatedCost, costTier } = estimateActivityCost(enriched.activity, trip.budget, enriched.estimatedCost);
+    enriched.estimatedCost = estimatedCost;
+    enriched.costTier = costTier;
+
+    // Step 5: Save
+    dayObj[period][idx] = enriched;
     await trip.save();
+    console.log(`✅ Replaced activity saved: "${enriched.activity}" (₹${enriched.estimatedCost})`);
 
     res.json({ success: true, data: trip });
   } catch (err) {
@@ -1093,12 +1159,49 @@ export const appendActivity = async (req, res) => {
     if (!dayObj || !dayObj[period])
       return res.status(400).json({ success: false });
 
-    // geocode safety
-    activity.geo =
-      (await geocodePlace(activity.activity, trip.location)) ||
-      { lat: 10.8505, lng: 76.2711 };
+    const activityName = activity.activity;
+    console.log(`➕ Enriching new activity "${activityName}" for Day ${day} ${period}`);
 
-    dayObj[period].push(activity);
+    // Step 1: Enrich fully via fillActivityDetails (same pipeline as main generation)
+    const enriched = await fillActivityDetails({
+      activityName,
+      location: trip.location,
+      period,
+      budget: trip.budget,
+      travelWith: trip.travelWith,
+      preferenceBias: buildPreferenceBias(trip.preferences),
+    });
+
+    // Step 2: Real geocoding
+    enriched.geo = (await geocodePlace(enriched.activity, trip.location)) || null;
+
+    // Step 3: Budget cost estimate
+    const { estimatedCost, costTier } = estimateActivityCost(enriched.activity, trip.budget, enriched.estimatedCost);
+    enriched.estimatedCost = estimatedCost;
+    enriched.costTier = costTier;
+
+    // Step 4: Fix start time — place AFTER the last existing activity in the same period
+    // This prevents two activities in the same slot from both showing 6:00 PM (or 9:00 AM etc.)
+    const existingInPeriod = dayObj[period];
+    if (existingInPeriod.length > 0) {
+      const last = existingInPeriod[existingInPeriod.length - 1];
+      const lastStartMins = timeEngine.parseTimeToMinutes(
+        last.startTime,
+        timeEngine.getDefaultStartTime(period)
+      );
+      const lastDurMins = last.durationMinutes
+        ? last.durationMinutes
+        : timeEngine.parseDurationToMinutes(last.duration, 90);
+      const TRAVEL_BUFFER_MINS = 15;
+      const newStartMins = lastStartMins + lastDurMins + TRAVEL_BUFFER_MINS;
+      enriched.startTime = timeEngine.minutesToTimeString(newStartMins);
+      enriched.durationMinutes = enriched.durationMinutes || 90;
+      console.log(`⏰ Adjusted startTime for appended activity to ${enriched.startTime} (after last activity ends + 15 min buffer)`);
+    }
+
+    // Step 5: Save to itinerary
+    dayObj[period].push(enriched);
+    console.log(`✅ Appended activity saved: "${enriched.activity}" (₹${enriched.estimatedCost})`);
 
     // history (last 5)
     trip.history = trip.history || [];
@@ -1106,7 +1209,7 @@ export const appendActivity = async (req, res) => {
       type: "append",
       day,
       period,
-      activity,
+      activity: enriched,
       at: new Date(),
     });
     trip.history = trip.history.slice(-5);
@@ -1285,14 +1388,18 @@ Rules:
     const aiResponse = await callGemini(prompt, undefined, {
       maxOutputTokens: 1000,
       jsonMode: true,
-      operationName: 'smartAdjustment'
+      operationName: 'smartAdjustment',
+      useCache: false
     });
     const parsed = extractJSON(aiResponse);
-    const suggestions = Array.isArray(parsed?.suggestions) ? parsed.suggestions : [];
+    
+    let validSuggestions = [];
+    if (Array.isArray(parsed?.suggestions)) validSuggestions = parsed.suggestions;
+    else if (Array.isArray(parsed)) validSuggestions = parsed;
 
     res.json({
       success: true,
-      suggestions,
+      suggestions: validSuggestions,
     });
   } catch (err) {
     console.error("❌ smartAdjustment error:", err.message);

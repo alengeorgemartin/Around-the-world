@@ -20,7 +20,7 @@ setInterval(() => {
  */
 export const handleRunningLate = async (req, res) => {
     try {
-        const { trip_id, day, delay_minutes } = req.body;
+        const { trip_id, day, delay_minutes, manual_drops } = req.body;
 
         // 1. Validation
         if (!trip_id || !day || !delay_minutes) {
@@ -75,7 +75,64 @@ export const handleRunningLate = async (req, res) => {
             });
         }
 
-        // 5. Save undo snapshot
+        // 5. Apply manual drops early if provided
+        if (manual_drops && Array.isArray(manual_drops)) {
+            manual_drops.forEach(dropLoc => {
+                const activityName = typeof dropLoc === 'string' ? dropLoc : dropLoc.activity;
+                ['morning', 'afternoon', 'evening'].forEach(period => {
+                    if (dayItinerary[period]) {
+                        dayItinerary[period] = dayItinerary[period].map(act => {
+                            if (act.activity === activityName) {
+                                act.status = "skipped";
+                                act.isSkipped = true;
+                            }
+                            return act;
+                        });
+                    }
+                });
+            });
+        }
+
+        // 6. Process using time engine (use a clean clone in case we don't save)
+        const dayItineraryClone = JSON.parse(JSON.stringify(dayItinerary));
+        const { updatedItinerary, explanation, changes } = processRunningLate(
+            dayItineraryClone,
+            delay_minutes,
+            {
+                location: trip.location,
+                currentTime: null, // Use earliest activity time
+                endOfDay: 22 * 60, // 10:00 PM
+                minDuration: 30,
+            }
+        );
+
+        // 7. Check if AI dropped anything and user hasn't explicitly skipped anything
+        if ((!manual_drops || manual_drops.length === 0) && changes.removed.length > 0) {
+            // Action required by user
+            const remainingActivities = [];
+            ['morning', 'afternoon', 'evening'].forEach(period => {
+                (dayItinerary[period] || []).forEach((act, idx) => {
+                    if (act.status !== "completed" && act.status !== "in-progress" && act.status !== "skipped") {
+                        remainingActivities.push({
+                            ...act,
+                            originalPeriod: period,
+                            originalIndex: idx
+                        });
+                    }
+                });
+            });
+
+            return res.json({
+                success: true,
+                action_required: true,
+                message: "Delay causes time conflicts. Please select activities to drop.",
+                required_drops_count: changes.removed.length,
+                remaining_activities: remainingActivities,
+                removed_by_ai: changes.removed
+            });
+        }
+
+        // 8. If committing, save undo snapshot first
         const undoSnapshot = {
             timestamp: new Date(),
             snapshot: JSON.parse(JSON.stringify(dayItinerary)),
@@ -91,26 +148,14 @@ export const handleRunningLate = async (req, res) => {
             trip.undoSnapshots = trip.undoSnapshots.slice(-3);
         }
 
-        // 6. Process using time engine
-        const { updatedItinerary, explanation, changes } = processRunningLate(
-            dayItinerary,
-            delay_minutes,
-            {
-                location: trip.location,
-                currentTime: null, // Use earliest activity time
-                endOfDay: 22 * 60, // 10:00 PM
-                minDuration: 30,
-            }
-        );
-
-        // 7. Update trip
+        // 9. Update trip
         dayItinerary.morning = updatedItinerary.morning;
         dayItinerary.afternoon = updatedItinerary.afternoon;
         dayItinerary.evening = updatedItinerary.evening;
 
         await trip.save();
 
-        // 8. Return response
+        // 10. Return response
         res.json({
             success: true,
             message: `Itinerary adjusted for ${delay_minutes}-minute delay`,

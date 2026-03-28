@@ -21,10 +21,7 @@ body {
     font-size: 52px;
     font-weight: 900;
     text-align: center;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
+    color: black;
     margin-bottom: 15px;
 }
 
@@ -47,8 +44,8 @@ body {
 
 .category {
     background: white;
-    border: 2px solid #e0e7ff;
-    color: #667eea;
+    border: 2px solid #e0e0e0;
+    color: black;
     padding: 12px 28px;
     border-radius: 20px;
     font-size: 15px;
@@ -63,14 +60,14 @@ body {
 
 .category:hover {
     transform: translateY(-3px);
-    box-shadow: 0 6px 20px rgba(102, 126, 234, 0.2);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
 }
 
 .category.active {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: black;
     color: white;
-    border-color: #667eea;
-    box-shadow: 0 8px 25px rgba(102, 126, 234, 0.35);
+    border-color: black;
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.25);
 }
 
 .category i {
@@ -112,6 +109,7 @@ body {
         opacity: 0;
         transform: translateX(20px);
     }
+
     to {
         opacity: 1;
         transform: translateX(0);
@@ -120,7 +118,7 @@ body {
 
 /* Carousel Navigation Buttons */
 .carousel-btn {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: black;
     border: 2px solid transparent;
     color: white;
     width: 50px;
@@ -132,7 +130,7 @@ body {
     justify-content: center;
     font-size: 20px;
     transition: all 0.3s ease;
-    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
     flex-shrink: 0;
     z-index: 10;
     padding: 0;
@@ -147,7 +145,7 @@ body {
 
 .carousel-btn:hover:not(.disabled) {
     transform: scale(1.1);
-    box-shadow: 0 6px 25px rgba(102, 126, 234, 0.4);
+    box-shadow: 0 6px 25px rgba(0, 0, 0, 0.2);
     border-color: white;
 }
 
@@ -181,7 +179,7 @@ body {
     width: 12px;
     height: 12px;
     border-radius: 50%;
-    border: 2px solid #667eea;
+    border: 2px solid black;
     background: white;
     cursor: pointer;
     transition: all 0.3s ease;
@@ -189,14 +187,14 @@ body {
 }
 
 .indicator-dot.active {
-    background: #667eea;
+    background: black;
     transform: scale(1.3);
-    box-shadow: 0 0 8px rgba(102, 126, 234, 0.4);
+    box-shadow: 0 0 8px rgba(0, 0, 0, 0.2);
 }
 
 .indicator-dot:hover {
-    background: #667eea;
-    box-shadow: 0 0 8px rgba(102, 126, 234, 0.4);
+    background: black;
+    box-shadow: 0 0 8px rgba(0, 0, 0, 0.2);
 }
 
 /* Responsive Carousel */
@@ -210,7 +208,7 @@ body {
     .packages-carousel {
         grid-template-columns: 1fr !important;
     }
-    
+
     .carousel-btn {
         width: 45px;
         height: 45px;
@@ -237,7 +235,7 @@ body {
     left: 0;
     right: 0;
     height: 5px;
-    background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+    background: black;
     transform: scaleX(0);
     transition: transform 0.3s ease;
     z-index: 1;
@@ -249,7 +247,7 @@ body {
 
 .package-card:hover {
     transform: translateY(-12px);
-    box-shadow: 0 20px 60px rgba(102, 126, 234, 0.25);
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
 }
 
 /* Image Container */
@@ -276,7 +274,7 @@ body {
     left: 18px;
     background: rgba(255, 255, 255, 0.95);
     backdrop-filter: blur(10px);
-    color: #667eea;
+    color: black;
     padding: 8px 18px;
     border-radius: 20px;
     font-size: 13px;
@@ -329,7 +327,7 @@ body {
 }
 
 .package-meta i {
-    color: #667eea;
+    color: black;
     font-size: 15px;
 }
 
@@ -368,7 +366,7 @@ body {
 
 .include-badge {
     background: linear-gradient(135deg, #f5f7fa 0%, #e8ecf1 100%);
-    color: #667eea;
+    color: black;
     padding: 7px 14px;
     border-radius: 14px;
     font-size: 12px;
@@ -376,7 +374,7 @@ body {
     display: flex;
     align-items: center;
     gap: 5px;
-    border: 1.5px solid #e0e7ff;
+    border: 1.5px solid #e0e0e0;
 }
 
 .include-badge i {
@@ -405,13 +403,10 @@ body {
 }
 
 .current-price {
-    color: #1a1a1a;
+    color: black;
     font-size: 32px;
     font-weight: 900;
     line-height: 1.1;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
 }
 
 .price-label {
@@ -422,7 +417,7 @@ body {
 }
 
 .view-details-btn {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: black;
     color: white;
     border: none;
     padding: 13px 28px;
@@ -431,12 +426,12 @@ body {
     font-size: 15px;
     cursor: pointer;
     transition: all 0.3s ease;
-    box-shadow: 0 6px 20px rgba(102, 126, 234, 0.3);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
 }
 
 .view-details-btn:hover {
     transform: translateY(-3px);
-    box-shadow: 0 10px 30px rgba(102, 126, 234, 0.4);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
 }
 
 /* MODAL OVERLAY */
@@ -531,7 +526,7 @@ body {
 
 .gallery-grid-img:hover {
     transform: scale(1.05);
-    box-shadow: 0 8px 20px rgba(102, 126, 234, 0.2);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
 }
 
 .modal-image {
@@ -547,14 +542,14 @@ body {
 
 .modal-badge {
     display: inline-block;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: black;
     color: white;
     padding: 8px 20px;
     border-radius: 20px;
     font-size: 14px;
     font-weight: 700;
     margin-bottom: 18px;
-    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
 }
 
 .modal-body h2 {
@@ -581,7 +576,7 @@ body {
 }
 
 .modal-meta i {
-    color: #667eea;
+    color: black;
     font-size: 18px;
 }
 
@@ -607,7 +602,7 @@ body {
 }
 
 .modal-section h3 i {
-    color: #667eea;
+    color: black;
     font-size: 20px;
 }
 
@@ -650,8 +645,8 @@ body {
     align-items: center;
     gap: 12px;
     font-weight: 700;
-    color: #667eea;
-    border: 1.5px solid #e0e7ff;
+    color: black;
+    border: 1.5px solid #e0e0e0;
 }
 
 .include-item i {
@@ -669,13 +664,13 @@ body {
     background: linear-gradient(135deg, #f8f9fa 0%, #f0f2f5 100%);
     padding: 20px;
     border-radius: 14px;
-    border-left: 4px solid #667eea;
+    border-left: 4px solid black;
     transition: transform 0.3s ease, box-shadow 0.3s ease;
 }
 
 .review-card:hover {
     transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(102, 126, 234, 0.12);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1);
 }
 
 .review-header {
@@ -738,13 +733,10 @@ body {
 }
 
 .modal-current-price {
-    color: #1a1a1a;
+    color: black;
     font-size: 42px;
     font-weight: 900;
     line-height: 1.2;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
 }
 
 .modal-price-label {
@@ -858,4 +850,64 @@ body {
     .modal-current-price {
         font-size: 36px;
     }
+}
+
+/* Booking Form Inputs in Modal */
+.rd-form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+    margin-bottom: 15px;
+}
+
+.rd-form-group {
+    margin-bottom: 15px;
+    text-align: left;
+}
+
+.rd-form-group label {
+    display: block;
+    font-size: 13px;
+    font-weight: 600;
+    color: #444;
+    margin-bottom: 8px;
+}
+
+.rd-input {
+    width: 100%;
+    padding: 12px 15px;
+    border-radius: 8px;
+    border: 1px solid #ccc;
+    background: #fdfdfd;
+    font-size: 14px;
+    outline: none;
+    box-sizing: border-box;
+    transition: all 0.3s ease;
+    color: #333;
+}
+
+.rd-input:focus {
+    border-color: #000;
+    background: #fff;
+    box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.1);
+}
+
+.rd-input::placeholder {
+    color: #999;
+}
+
+.rd-input-with-icon {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.rd-input-with-icon i {
+    position: absolute;
+    left: 15px;
+    color: #666;
+}
+
+.rd-input-with-icon .rd-input {
+    padding-left: 40px;
 }

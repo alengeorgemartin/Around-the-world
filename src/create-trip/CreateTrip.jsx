@@ -31,6 +31,7 @@ function CreateTrip() {
   /* ================= OTHER FIELDS ================= */
   const [startDate, setStartDate] = useState("");
   const [preferences, setPreferences] = useState([]);
+  const [customPreferenceInput, setCustomPreferenceInput] = useState(""); // NEW
   const [days, setDays] = useState(1);
   const [budget, setBudget] = useState("");
   const [budgetAmount, setBudgetAmount] = useState(""); // NEW: numeric ₹ amount
@@ -125,6 +126,17 @@ function CreateTrip() {
 
       return [...filtered, pref];
     });
+  };
+
+  const handleAddCustomPreference = (e) => {
+    if (e.key === "Enter" || e.type === "click") {
+      e.preventDefault(); // Prevent form submission
+      const val = customPreferenceInput.trim();
+      if (val && !preferences.includes(val) && !preferenceOptions.includes(val)) {
+        setPreferences(prev => [...prev, val]);
+      }
+      setCustomPreferenceInput("");
+    }
   };
 
   /* ================= SUBMIT ================= */
@@ -351,6 +363,32 @@ function CreateTrip() {
               <i className="fa-solid fa-heart"></i> Travel Interests
             </h2>
             <p className="card-subtitle">Select your preferences (conflicting ones will be auto-removed)</p>
+
+            {/* Custom Preference Input */}
+            <div className="input-group mb-4">
+              <label>Add Specific Interest</label>
+              <div className="flex gap-2" style={{ display: 'flex', gap: '8px' }}>
+                <input
+                  type="text"
+                  placeholder="e.g. historical, kid friendly, vegan spots..."
+                  value={customPreferenceInput}
+                  onChange={(e) => setCustomPreferenceInput(e.target.value)}
+                  onKeyDown={handleAddCustomPreference}
+                  className="form-input"
+                  style={{ flex: 1 }}
+                />
+                <button
+                  type="button"
+                  onClick={handleAddCustomPreference}
+                  disabled={!customPreferenceInput.trim()}
+                  className="submit-btn"
+                  style={{ width: 'auto', padding: '10px 16px', marginTop: 0 }}
+                >
+                  Add
+                </button>
+              </div>
+            </div>
+
             <div className="preferences-grid">
               {preferenceOptions.map((pref) => {
                 const isSelected = preferences.includes(pref);
@@ -369,6 +407,20 @@ function CreateTrip() {
                   </div>
                 );
               })}
+
+              {/* Render custom preferences that were added */}
+              {preferences
+                .filter(pref => !preferenceOptions.includes(pref))
+                .map((customPref) => (
+                  <div
+                    key={customPref}
+                    className="pref-chip selected"
+                    onClick={() => togglePreference(customPref)}
+                  >
+                    {customPref}
+                    <i className="fa-solid fa-check"></i>
+                  </div>
+                ))}
             </div>
           </div>
 

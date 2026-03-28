@@ -1,0 +1,419 @@
+/* ===== REGISTER BUSINESS PAGE ===== */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+.rb-page {
+    min-height: 100vh;
+    background: #f4f6fb;
+    font-family: 'Inter', sans-serif;
+    padding: 40px 20px 80px;
+}
+
+.rb-container {
+    max-width: 860px;
+    margin: 0 auto;
+}
+
+/* Header */
+.rb-header {
+    margin-bottom: 32px;
+}
+
+.rb-back {
+    background: none;
+    border: none;
+    font-size: 14px;
+    font-weight: 600;
+    color: #555;
+    cursor: pointer;
+    padding: 0;
+    margin-bottom: 16px;
+    display: block;
+    transition: color 0.2s;
+}
+
+.rb-back:hover {
+    color: #000;
+}
+
+.rb-title-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.rb-badge {
+    display: inline-block;
+    background: #000;
+    color: #ffa500;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    padding: 4px 12px;
+    border-radius: 20px;
+    width: fit-content;
+}
+
+.rb-title-group h1 {
+    font-size: 32px;
+    font-weight: 800;
+    color: #111;
+    margin: 0;
+}
+
+.rb-title-group p {
+    color: #666;
+    margin: 0;
+    font-size: 15px;
+}
+
+/* Step Indicator */
+.rb-steps {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    margin-bottom: 32px;
+}
+
+.rb-step {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    color: #aaa;
+    transition: color 0.2s;
+}
+
+.rb-step.active {
+    color: #111;
+}
+
+.rb-step span {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    background: #ddd;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    font-weight: 700;
+    transition: background 0.2s, color 0.2s;
+}
+
+.rb-step.active span {
+    background: #ffa500;
+    color: #fff;
+}
+
+.rb-step-line {
+    flex: 1;
+    height: 2px;
+    background: #ddd;
+    margin: 0 12px;
+}
+
+/* Error / notification */
+.rb-error {
+    background: #fff0f0;
+    border-left: 4px solid #e74c3c;
+    padding: 12px 16px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+    font-size: 14px;
+    color: #c0392b;
+    font-weight: 500;
+}
+
+/* Card */
+.rb-card {
+    background: #fff;
+    border-radius: 20px;
+    padding: 32px;
+    box-shadow: 0 2px 20px rgba(0, 0, 0, 0.06);
+    margin-bottom: 24px;
+}
+
+.rb-section-title {
+    font-size: 20px;
+    font-weight: 700;
+    color: #111;
+    margin-bottom: 24px;
+}
+
+/* Form Grid */
+.rb-form-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 18px;
+    margin-bottom: 24px;
+}
+
+.rb-form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.rb-form-group.rb-full {
+    grid-column: 1 / -1;
+}
+
+.rb-form-group label {
+    font-size: 13px;
+    font-weight: 600;
+    color: #444;
+}
+
+.rb-input {
+    width: 100%;
+    padding: 11px 14px;
+    border-radius: 10px;
+    border: 1.5px solid #e0e0e0;
+    font-size: 14px;
+    outline: none;
+    box-sizing: border-box;
+    transition: border 0.2s;
+    background: #fafafa;
+    font-family: 'Inter', sans-serif;
+}
+
+.rb-input:focus {
+    border-color: #ffa500;
+    background: #fff;
+}
+
+.rb-textarea {
+    resize: vertical;
+}
+
+/* Preview image */
+.rb-preview-img-wrap {
+    width: 100%;
+    height: 160px;
+    background: #f0f0f0;
+    border-radius: 12px;
+    overflow: hidden;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.rb-preview-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+/* Buttons */
+.rb-btn-primary {
+    background: #000;
+    color: #fff;
+    border: none;
+    padding: 14px 30px;
+    border-radius: 12px;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background 0.2s, transform 0.1s;
+    font-family: 'Inter', sans-serif;
+}
+
+.rb-btn-primary:hover {
+    background: #333;
+    transform: translateY(-1px);
+}
+
+.rb-btn-primary:disabled {
+    background: #aaa;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.rb-btn-add {
+    background: #ffa500;
+    color: #fff;
+    border: none;
+    padding: 12px 24px;
+    border-radius: 10px;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background 0.2s;
+    font-family: 'Inter', sans-serif;
+}
+
+.rb-btn-add:hover {
+    background: #e59400;
+}
+
+.rb-btn-secondary {
+    background: #f0f0f0;
+    color: #333;
+    border: none;
+    padding: 14px 24px;
+    border-radius: 12px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s;
+    font-family: 'Inter', sans-serif;
+}
+
+.rb-btn-secondary:hover {
+    background: #e0e0e0;
+}
+
+/* Added Cars List */
+.rb-cars-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 28px;
+}
+
+.rb-car-item {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    background: #f7f8fc;
+    border-radius: 12px;
+    padding: 12px 16px;
+    position: relative;
+}
+
+.rb-car-img-wrap {
+    width: 90px;
+    height: 60px;
+    border-radius: 10px;
+    overflow: hidden;
+    flex-shrink: 0;
+    background: #e0e0e0;
+}
+
+.rb-car-img-wrap img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.rb-car-img-placeholder {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 28px;
+    color: #aaa;
+}
+
+.rb-car-info {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    flex: 1;
+}
+
+.rb-car-info strong {
+    font-size: 15px;
+    font-weight: 700;
+    color: #111;
+}
+
+.rb-car-info span {
+    font-size: 13px;
+    color: #666;
+}
+
+.rb-car-price {
+    color: #ffa500 !important;
+    font-weight: 700 !important;
+}
+
+.rb-remove-btn {
+    background: #ffe5e5;
+    border: none;
+    color: #e74c3c;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.rb-remove-btn:hover {
+    background: #ffc0c0;
+}
+
+.rb-submit-row {
+    display: flex;
+    gap: 14px;
+    align-items: center;
+}
+
+/* Empty hint */
+.rb-empty-hint {
+    text-align: center;
+    padding: 40px;
+    color: #aaa;
+}
+
+.rb-empty-hint i {
+    font-size: 40px;
+    margin-bottom: 12px;
+}
+
+.rb-empty-hint p {
+    font-size: 14px;
+}
+
+/* Success */
+.rb-success-card {
+    background: #fff;
+    border-radius: 20px;
+    padding: 60px 40px;
+    text-align: center;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+    max-width: 480px;
+    margin: 80px auto;
+}
+
+.rb-success-icon {
+    font-size: 60px;
+    margin-bottom: 16px;
+}
+
+.rb-success-card h2 {
+    font-size: 26px;
+    font-weight: 800;
+    margin-bottom: 12px;
+}
+
+.rb-success-card p {
+    color: #555;
+    margin-bottom: 28px;
+}
+
+/* Responsive */
+@media (max-width: 600px) {
+    .rb-form-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .rb-card {
+        padding: 20px;
+    }
+
+    .rb-title-group h1 {
+        font-size: 24px;
+    }
+
+    .rb-submit-row {
+        flex-direction: column-reverse;
+    }
+}

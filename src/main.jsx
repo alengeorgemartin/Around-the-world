@@ -20,6 +20,7 @@ import Rentals from "./pages/Rentals.jsx";
 import Hotels from "./pages/Hotels.jsx";
 import Layout from "./Layout.jsx";
 import DestinationDetails from "./pages/DestinationDetails.jsx";
+import RegisterBusiness from "./pages/RegisterBusiness.jsx";
 
 
 
@@ -92,6 +93,14 @@ const router = createBrowserRouter([
   {
     path: "/destination/:id",
     element: <Layout><DestinationDetails /></Layout>,
+  },
+  {
+    path: "/register-vehicle",
+    element: (
+      <ProtectedRoute role="user">
+        <Layout><RegisterBusiness /></Layout>
+      </ProtectedRoute>
+    ),
   },
 ])
 

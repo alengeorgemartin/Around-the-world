@@ -14,7 +14,8 @@ const bookingSchema = new mongoose.Schema(
         tripId: {
             type: mongoose.Schema.Types.ObjectId,
             ref: "Trip",
-            required: true,
+            // Made optional to support standalone vehicle rentals
+            required: false,
         },
 
         // Business being booked

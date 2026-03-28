@@ -39,6 +39,9 @@ import {
 } from "lucide-react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
+import markerIcon2x from "leaflet/dist/images/marker-icon-2x.png";
+import markerIcon from "leaflet/dist/images/marker-icon.png";
+import markerShadow from "leaflet/dist/images/marker-shadow.png";
 import "../styles/ViewTripNew.css";
 import BookingModal from "../components/BookingModal";
 import {
@@ -60,12 +63,9 @@ import { CSS } from '@dnd-kit/utilities';
 /* ---------------- FIX LEAFLET ICON ISSUE ---------------- */
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
-  iconRetinaUrl:
-    "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png",
-  iconUrl:
-    "https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png",
-  shadowUrl:
-    "https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png",
+  iconRetinaUrl: markerIcon2x,
+  iconUrl: markerIcon,
+  shadowUrl: markerShadow,
 });
 
 export const hotelIcon = L.divIcon({
@@ -216,6 +216,7 @@ function ViewTrip() {
   // Replace modal
   const [activeEdit, setActiveEdit] = useState(null);
   const [loadingAI, setLoadingAI] = useState(false);
+  const [customPreference, setCustomPreference] = useState("");
 
   // Extra suggestions (add)
   const [extraSuggestions, setExtraSuggestions] = useState([]);
@@ -239,6 +240,11 @@ function ViewTrip() {
   const [runningLateLoading, setRunningLateLoading] = useState(false);
   const [runningLateResult, setRunningLateResult] = useState(null);
   const [showRunningLateModal, setShowRunningLateModal] = useState(false);
+  const [showConflictModal, setShowConflictModal] = useState(false);
+  const [conflictActivities, setConflictActivities] = useState([]);
+  const [requiredDropsCount, setRequiredDropsCount] = useState(0);
+  const [selectedKeeps, setSelectedKeeps] = useState({});
+  const [activeDelayOptions, setActiveDelayOptions] = useState(null);
 
   // Partner Businesses state
   const [allBusinesses, setAllBusinesses] = useState({ hotels: [], rentals: [], tours: [] });
@@ -402,16 +408,24 @@ function ViewTrip() {
     if (!activeEdit) return;
 
     setLoadingAI(true);
-    await api.post(`/trip/${id}/replace-activity`, {
-      day: activeEdit.day,
-      period: activeEdit.period,
-      currentActivity: activeEdit.activity.activity,
-      preferenceHint: strategyHint,
-    });
+    try {
+      await api.post(`/trip/${id}/replace-activity`, {
+        day: activeEdit.day,
+        period: activeEdit.period,
+        currentActivity: activeEdit.activity.activity,
+        preferenceHint: strategyHint,
+        activityIndex: activeEdit.activityIndex,
+      });
 
-    await fetchTrip();
-    setActiveEdit(null);
-    setLoadingAI(false);
+      await fetchTrip();
+    } catch (error) {
+      console.error("Error replacing activity:", error);
+      alert("Failed to replace activity. Please try again.");
+    } finally {
+      setActiveEdit(null);
+      setCustomPreference("");
+      setLoadingAI(false);
+    }
   };
 
   const loadAdditionalSuggestions = async (day, period, activity, activityIndex) => {
@@ -621,21 +635,41 @@ function ViewTrip() {
   };
 
   /* ---------------- RUNNING LATE HANDLERS ---------------- */
-  const handleRunningLate = async (delayMinutes, dayNumber) => {
+  const handleRunningLate = async (delayMinutes, dayNumber, manualDrops = null) => {
     setRunningLateLoading(true);
     setRunningLateResult(null);
 
     try {
-      const response = await api.post('/running-late', {
+      const payload = {
         trip_id: id,
         day: dayNumber,
         delay_minutes: delayMinutes,
-      });
+      };
+      
+      if (manualDrops) {
+        payload.manual_drops = manualDrops;
+      }
+
+      const response = await api.post('/running-late', payload);
 
       if (response.data.success) {
-        setRunningLateResult(response.data);
-        setShowRunningLateModal(true);
-        await fetchTrip(); // Refresh trip data
+        if (response.data.action_required) {
+          setConflictActivities(response.data.remaining_activities || []);
+          setRequiredDropsCount(response.data.required_drops_count || 1);
+          setActiveDelayOptions({ delayMinutes, dayNumber });
+          
+          const initialKeeps = {};
+          (response.data.remaining_activities || []).forEach(act => {
+            initialKeeps[act.activity] = true;
+          });
+          setSelectedKeeps(initialKeeps);
+          setShowConflictModal(true);
+        } else {
+          setShowConflictModal(false);
+          setRunningLateResult(response.data);
+          setShowRunningLateModal(true);
+          await fetchTrip(); // Refresh trip data
+        }
       } else {
         // Warning case (must-activities conflict)
         alert(response.data.warning || 'Cannot adjust schedule');
@@ -653,6 +687,23 @@ function ViewTrip() {
     } finally {
       setRunningLateLoading(false);
     }
+  };
+
+  const handleConfirmConflicts = () => {
+    const drops = conflictActivities
+      .filter(act => !selectedKeeps[act.activity])
+      .map(act => ({
+        activity: act.activity,
+        period: act.originalPeriod,
+        originalIndex: act.originalIndex
+      }));
+    
+    if (drops.length < requiredDropsCount) {
+      alert(`Due to time constraints, you must uncheck (drop) at least ${requiredDropsCount} activities.`);
+      return;
+    }
+    
+    handleRunningLate(activeDelayOptions.delayMinutes, activeDelayOptions.dayNumber, drops);
   };
 
   const handleUndoRunningLate = async () => {
@@ -1501,6 +1552,7 @@ function ViewTrip() {
                                             day: day.day,
                                             period,
                                             activity: a,
+                                            activityIndex: i,
                                           })
                                         }
                                         className="flex items-center gap-1 px-3 py-1 bg-blue-100 text-blue-700 rounded-lg text-sm font-medium hover:bg-blue-200 transition-colors"
@@ -1712,7 +1764,10 @@ function ViewTrip() {
                 Replace Activity
               </h2>
               <button
-                onClick={() => setActiveEdit(null)}
+                onClick={() => {
+                  setActiveEdit(null);
+                  setCustomPreference("");
+                }}
                 className="text-gray-400 hover:text-gray-600 transition-colors"
               >
                 <X size={24} />
@@ -1749,11 +1804,39 @@ function ViewTrip() {
                 >
                   🌿 Less Crowded
                 </button>
+
+                <div className="mt-4 pt-4 border-t border-gray-200">
+                  <p className="text-sm text-gray-600 mb-2 font-medium">Have a specific preference?</p>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      placeholder="e.g. kid friendly, historical, shopping..."
+                      value={customPreference}
+                      onChange={(e) => setCustomPreference(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && customPreference.trim()) {
+                          replaceActivity(customPreference.trim());
+                        }
+                      }}
+                      className="flex-1 px-4 py-2 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                    />
+                    <button
+                      onClick={() => replaceActivity(customPreference.trim())}
+                      disabled={!customPreference.trim()}
+                      className="px-4 py-2 bg-gray-800 text-white rounded-xl font-semibold hover:bg-gray-900 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-sm"
+                    >
+                      Search
+                    </button>
+                  </div>
+                </div>
               </div>
             )}
 
             <button
-              onClick={() => setActiveEdit(null)}
+              onClick={() => {
+                setActiveEdit(null);
+                setCustomPreference("");
+              }}
               className="mt-4 w-full text-center text-gray-500 hover:text-gray-700 font-medium transition-colors"
             >
               Cancel
@@ -1808,6 +1891,98 @@ function ViewTrip() {
         onSubmit={handleBookingSubmit}
         booking={selectedBooking}
       />
+
+      {/* Running Late Conflict Modal */}
+      {showConflictModal && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-[9999] p-4"
+          onClick={() => setShowConflictModal(false)}
+        >
+          <div
+            className="bg-white rounded-2xl shadow-2xl max-w-xl w-full max-h-[90vh] flex flex-col overflow-hidden animate-in"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="bg-gradient-to-r from-orange-500 to-red-500 p-6 flex items-center justify-between shadow-md shrink-0">
+              <div className="flex items-center gap-3">
+                <AlertTriangle className="text-white" size={28} />
+                <h2 className="text-xl font-bold text-white leading-tight">Time Constraints Detected</h2>
+              </div>
+              <button
+                onClick={() => setShowConflictModal(false)}
+                className="text-white hover:bg-white/20 p-2 rounded-lg transition-all"
+              >
+                <X size={24} />
+              </button>
+            </div>
+
+            <div className="p-6 overflow-y-auto bg-orange-50/50 flex-1 custom-scrollbar">
+              <p className="text-gray-700 mb-6 font-medium leading-relaxed bg-white p-4 rounded-xl border border-orange-100 shadow-sm">
+                Because of the {activeDelayOptions?.delayMinutes} minute delay, you do not have enough time before places close. 
+                <strong className="text-red-600 block mt-2">
+                  Please uncheck at least {requiredDropsCount} {requiredDropsCount === 1 ? 'place' : 'places'} to skip.
+                </strong>
+              </p>
+
+              <div className="space-y-3">
+                {conflictActivities.map((act) => (
+                  <label 
+                    key={`${act.originalPeriod}-${act.originalIndex}`} 
+                    className={`flex items-start gap-4 p-4 rounded-xl border-2 transition-all cursor-pointer shadow-sm
+                      ${selectedKeeps[act.activity] 
+                        ? 'border-blue-500 bg-blue-50/50' 
+                        : 'border-gray-200 bg-white opacity-60 grayscale-[50%]'}`}
+                  >
+                    <div className="pt-0.5">
+                      <input 
+                        type="checkbox" 
+                        checked={selectedKeeps[act.activity] || false}
+                        onChange={(e) => {
+                          setSelectedKeeps(prev => ({ ...prev, [act.activity]: e.target.checked }));
+                        }}
+                        className="w-5 h-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                      />
+                    </div>
+                    <div className="flex-1">
+                      <div className="font-bold text-gray-800 mb-1 leading-tight">{act.activity}</div>
+                      <div className="flex items-center gap-3 text-xs text-gray-500 font-medium">
+                        <span className="flex items-center gap-1 capitalize">
+                          {getPeriodIcon(act.originalPeriod)} {act.originalPeriod}
+                        </span>
+                        {act.duration && (
+                          <span className="flex items-center gap-1">⏱ {act.duration}</span>
+                        )}
+                        {act.priority && (
+                          <span className="px-2 py-0.5 bg-gray-100 rounded-md">
+                            Priority: {act.priority}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            <div className="p-6 bg-white border-t border-gray-100 shrink-0">
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowConflictModal(false)}
+                  className="flex-1 py-3 px-4 rounded-xl font-semibold border-2 border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleConfirmConflicts}
+                  className="flex-[2] py-3 px-4 rounded-xl font-semibold bg-gradient-to-r from-blue-600 to-purple-600 text-white shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2"
+                >
+                  Confirm Updated Plan
+                  <Sparkles size={18} />
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Running Late Changes Modal - Centered */}
       {showRunningLateModal && runningLateResult && (

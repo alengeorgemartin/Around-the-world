@@ -27,21 +27,48 @@ export const createBooking = async (req, res) => {
             contactInfo,
         } = req.body;
 
-        // Validate required fields
-        if (!tripId || !businessId || !bookingType || !checkIn || !checkOut || !basePrice || !totalPrice) {
+        // Validate required fields (tripId is optional for direct rentals)
+        if (!businessId || !bookingType || !checkIn || !checkOut || !basePrice || !totalPrice) {
             return res.status(400).json({
                 success: false,
                 message: "Missing required fields",
             });
         }
 
-        // Verify trip belongs to user
-        const trip = await Trip.findById(tripId);
-        if (!trip || trip.userId.toString() !== req.user.id) {
-            return res.status(403).json({
+        // Validate dates
+        const checkInDate = new Date(checkIn);
+        const checkOutDate = new Date(checkOut);
+        
+        // Reset time for today's date for accurate comparison
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        
+        const checkInDateNormalized = new Date(checkInDate);
+        checkInDateNormalized.setHours(0, 0, 0, 0);
+
+        if (checkInDateNormalized < today) {
+            return res.status(400).json({
                 success: false,
-                message: "Unauthorized - trip not found or does not belong to you",
+                message: "Pickup date cannot be in the past",
             });
+        }
+
+        if (checkOutDate < checkInDate) {
+            return res.status(400).json({
+                success: false,
+                message: "Return date cannot be earlier than pickup date",
+            });
+        }
+
+        // Verify trip belongs to user (only if tripId is provided)
+        if (tripId) {
+            const trip = await Trip.findById(tripId);
+            if (!trip || trip.userId.toString() !== req.user.id) {
+                return res.status(403).json({
+                    success: false,
+                    message: "Unauthorized - trip not found or does not belong to you",
+                });
+            }
         }
 
         // Verify business exists and is approved

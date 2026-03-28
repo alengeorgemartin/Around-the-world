@@ -315,7 +315,7 @@ const Home = () => {
           </div>
 
           <div className="induz-action-container">
-            <button className="induz-start-btn">Get start</button>
+            <button className="induz-start-btn" onClick={() => navigate('/rentals')}>Get start</button>
           </div>
         </div>
       </div>
