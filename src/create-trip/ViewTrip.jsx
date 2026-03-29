@@ -51,6 +51,7 @@ import {
   PointerSensor,
   useSensor,
   useSensors,
+  useDroppable,
 } from '@dnd-kit/core';
 import {
   arrayMove,
@@ -60,6 +61,16 @@ import {
 } from '@dnd-kit/sortable';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
+
+/* ---------------- DROPPABLE CONTAINER ---------------- */
+function DroppablePeriodContainer({ id, children }) {
+  const { setNodeRef } = useDroppable({ id });
+  return (
+    <div ref={setNodeRef} className="min-h-[60px] flex flex-col gap-2 rounded-xl transition-colors">
+      {children}
+    </div>
+  );
+}
 /* ---------------- FIX LEAFLET ICON ISSUE ---------------- */
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
@@ -462,7 +473,7 @@ function ViewTrip() {
       await fetchTrip();
     } catch (error) {
       console.error("Error adding activity:", error);
-      alert("Failed to add activity. Please try again.");
+      alert(error.response?.data?.message || "Failed to add activity. Please try again.");
     }
   };
 
@@ -537,11 +548,18 @@ function ViewTrip() {
     }
 
     const activeIndex = parseInt(activeIndexId);
-    const overIndex = parseInt(overIndexId);
-
+    let overIndex;
+    
     // Find the current day object in state
     const dayObj = trip.itinerary.find(d => String(d.day) === activeDay);
     if (!dayObj) return;
+
+    // If dropped on the empty container, put it at the end
+    if (overIndexId === 'container') {
+      overIndex = overPeriod === 'morning' ? dayObj.morning.length : overPeriod === 'afternoon' ? dayObj.afternoon.length : dayObj.evening.length;
+    } else {
+      overIndex = parseInt(overIndexId);
+    }
 
     // Create a deep copy of the periods for optimistic UI update
     const newMorning = [...dayObj.morning];
@@ -583,8 +601,8 @@ function ViewTrip() {
         afternoon: newAfternoon,
         evening: newEvening
       });
-      // (Optional) Re-fetch to ensure sync with DB, though optimistic update is usually fine
-      // await fetchTrip(); 
+      // Re-fetch to ensure sync with DB and get the newly calculated start times from the backend time engine!
+      await fetchTrip(); 
     } catch (error) {
       console.error("Error reordering activity:", error);
       alert("Failed to reorder activity. Changes have been reverted.");
@@ -1485,7 +1503,7 @@ function ViewTrip() {
                           items={day[period].map((a, i) => `${day.day}-${period}-${i}`)}
                           strategy={verticalListSortingStrategy}
                         >
-                          <div className="space-y-2">
+                          <DroppablePeriodContainer id={`${day.day}-${period}-container`}>
                             {day[period].map((a, i) => {
                               const itemId = `${day.day}-${period}-${i}`;
                               return (
@@ -1743,7 +1761,7 @@ function ViewTrip() {
                                 </SortableActivityItem>
                               );
                             })}
-                          </div>
+                          </DroppablePeriodContainer>
                         </SortableContext>
                       </div>
                     ))}

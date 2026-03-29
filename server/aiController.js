@@ -15,7 +15,7 @@ import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
 import {
-  estimateActivityCost,
+  estimateActivityCost as originalEstimateActivityCost,
   comparePlans,
   buildBudgetBreakdown,
   allocateBudget,
@@ -76,7 +76,7 @@ function isValidActivity(activityName) {
 /* ======================================================
    PREFERENCE BIAS BUILDER
 ====================================================== */
-function buildPreferenceBias(preferences = []) {
+export function buildPreferenceBias(preferences = []) {
   const bias = [];
 
   // Map all 9 frontend preferences to specific AI instructions
@@ -160,7 +160,7 @@ function isValidDescription(description, activityName) {
 }
 
 /* Fill missing details for an activity */
-async function fillActivityDetails({
+export async function fillActivityDetails({
   activityName,
   location,
   period,
@@ -246,6 +246,9 @@ Return ONLY the JSON. No explanations.
   };
 }
 
+export function estimateActivityCost(activityName, budgetTier, aiEstimate = 0) {
+  return originalEstimateActivityCost(activityName, budgetTier, aiEstimate);
+}
 
 /* Replace duplicate activities */
 async function replaceDuplicates({
@@ -1180,28 +1183,63 @@ export const appendActivity = async (req, res) => {
     enriched.estimatedCost = estimatedCost;
     enriched.costTier = costTier;
 
-    // Step 4: Fix start time — place AFTER the last existing activity in the same period
-    // This prevents two activities in the same slot from both showing 6:00 PM (or 9:00 AM etc.)
-    const existingInPeriod = dayObj[period];
-    if (existingInPeriod.length > 0) {
-      const last = existingInPeriod[existingInPeriod.length - 1];
-      const lastStartMins = timeEngine.parseTimeToMinutes(
-        last.startTime,
-        timeEngine.getDefaultStartTime(period)
-      );
-      const lastDurMins = last.durationMinutes
-        ? last.durationMinutes
-        : timeEngine.parseDurationToMinutes(last.duration, 90);
-      const TRAVEL_BUFFER_MINS = 15;
-      const newStartMins = lastStartMins + lastDurMins + TRAVEL_BUFFER_MINS;
-      enriched.startTime = timeEngine.minutesToTimeString(newStartMins);
-      enriched.durationMinutes = enriched.durationMinutes || 90;
-      console.log(`⏰ Adjusted startTime for appended activity to ${enriched.startTime} (after last activity ends + 15 min buffer)`);
+    // Step 4: Add to day, re-optimize routing, and securely place in proper time buckets
+    const allActivities = [
+      ...dayObj.morning.filter(a => a),
+      ...dayObj.afternoon.filter(a => a),
+      ...dayObj.evening.filter(a => a)
+    ];
+
+    allActivities.push(enriched);
+
+    // Re-route according to the least travel time (TSP nearest-neighbor)
+    const optimizedArr = optimizeDailyRoute(allActivities);
+
+    let currentMins = timeEngine.getDefaultStartTime('morning'); // 540 mins (9:00 AM)
+
+    const newMorning = [];
+    const newAfternoon = [];
+    const newEvening = [];
+
+    // Linearly assign proper start times and bucket into morning/afternoon/evening exactly based on generated time
+    for (const act of optimizedArr) {
+      const duration = act.durationMinutes || timeEngine.parseDurationToMinutes(act.duration, 90);
+      
+      // ✅ Check operating hours against our linearly assigned schedule
+      if (act.timeWindow && act.timeWindow.close && act.timeWindow.close !== "23:59" && act.timeWindow.close !== "00:00") {
+        const [closeH, closeM] = act.timeWindow.close.split(':').map(Number);
+        const closeMins = closeH * 60 + closeM;
+        
+        // If the activity would start after it closes, or halfway through its duration
+        if (currentMins + (duration / 2) > closeMins) {
+           if (act.activity === enriched.activity) {
+              return res.status(400).json({ 
+                success: false, 
+                message: `Cannot add "${act.activity}". It closes at ${act.timeWindow.close}, but based on your itinerary it cannot be scheduled until ${timeEngine.minutesToTimeString(currentMins)}.` 
+              });
+           }
+        }
+      }
+      
+      act.startTime = timeEngine.minutesToTimeString(currentMins);
+      act.durationMinutes = duration;
+      
+      if (currentMins < 12 * 60) {
+        newMorning.push(act);
+      } else if (currentMins < 17 * 60) { // 5:00 PM boundary for afternoon
+        newAfternoon.push(act);
+      } else {
+        newEvening.push(act);
+      }
+      
+      currentMins += duration + 15; // 15 mins travel buffer
     }
 
-    // Step 5: Save to itinerary
-    dayObj[period].push(enriched);
-    console.log(`✅ Appended activity saved: "${enriched.activity}" (₹${enriched.estimatedCost})`);
+    dayObj.morning = newMorning;
+    dayObj.afternoon = newAfternoon;
+    dayObj.evening = newEvening;
+
+    console.log(`✅ Appended activity saved and route re-optimized: "${enriched.activity}" (₹${enriched.estimatedCost})`);
 
     // history (last 5)
     trip.history = trip.history || [];
@@ -1325,6 +1363,35 @@ export const reorderActivity = async (req, res) => {
     // Keep history trimmed to last 5
     trip.history = trip.history.slice(-5);
     // Apply the newly ordered arrays sent by the frontend drag and drop
+    // We automatically recalculate the startTimes while keeping them in the user's explicitly chosen drag buckets!
+    
+    // Process morning
+    let currentMins = timeEngine.getDefaultStartTime('morning'); // 540 (9:00 AM)
+    for (const act of morning) {
+      const duration = act.durationMinutes || timeEngine.parseDurationToMinutes(act.duration, 90);
+      act.startTime = timeEngine.minutesToTimeString(currentMins);
+      act.durationMinutes = duration;
+      currentMins += duration + 15;
+    }
+
+    // Process afternoon (ensure it starts at least at 12:00 PM)
+    currentMins = Math.max(currentMins, 720); // 12:00 PM
+    for (const act of afternoon) {
+      const duration = act.durationMinutes || timeEngine.parseDurationToMinutes(act.duration, 90);
+      act.startTime = timeEngine.minutesToTimeString(currentMins);
+      act.durationMinutes = duration;
+      currentMins += duration + 15;
+    }
+
+    // Process evening (ensure it starts at least at 5:00 PM)
+    currentMins = Math.max(currentMins, 1020); // 5:00 PM
+    for (const act of evening) {
+      const duration = act.durationMinutes || timeEngine.parseDurationToMinutes(act.duration, 90);
+      act.startTime = timeEngine.minutesToTimeString(currentMins);
+      act.durationMinutes = duration;
+      currentMins += duration + 15;
+    }
+
     currentDayObj.morning = morning;
     currentDayObj.afternoon = afternoon;
     currentDayObj.evening = evening;
