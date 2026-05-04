@@ -21,7 +21,11 @@ import { additionalSuggestions } from "./aiController.js";
 import { appendActivity } from "./aiController.js";
 import { deleteActivity } from "./aiController.js";
 import { smartAdjustment } from "./aiController.js";
-import { undoLastChange, reorderActivity } from "./aiController.js";
+import { 
+  undoLastChange, 
+  reorderActivity,
+  refreshActivityDetails 
+} from "./aiController.js";
 import { generateTripPDF } from "./services/pdfGenerator.js";
 
 
@@ -136,6 +140,12 @@ app.post(
   "/api/trip/:id/replace-activity",
   protect(["user", "admin"]),
   replaceActivity
+);
+
+app.post(
+  "/api/trip/:id/refresh-activity-details",
+  protect(["user", "admin"]),
+  refreshActivityDetails
 );
 
 app.post(

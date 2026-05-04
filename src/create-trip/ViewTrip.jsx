@@ -36,6 +36,7 @@ import {
   AlertTriangle,
   Star,
   Trash2,
+  RefreshCw
 } from "lucide-react";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
@@ -228,6 +229,7 @@ function ViewTrip() {
   const [activeEdit, setActiveEdit] = useState(null);
   const [loadingAI, setLoadingAI] = useState(false);
   const [customPreference, setCustomPreference] = useState("");
+  const [refreshingActivities, setRefreshingActivities] = useState({});
 
   // Extra suggestions (add)
   const [extraSuggestions, setExtraSuggestions] = useState([]);
@@ -436,6 +438,25 @@ function ViewTrip() {
       setActiveEdit(null);
       setCustomPreference("");
       setLoadingAI(false);
+    }
+  };
+
+  const handleRefreshDescription = async (day, period, activityIndex) => {
+    const key = `${day}-${period}-${activityIndex}`;
+    setRefreshingActivities(prev => ({ ...prev, [key]: true }));
+
+    try {
+      await api.post(`/trip/${id}/refresh-activity-details`, {
+        day,
+        period,
+        activityIndex
+      });
+      await fetchTrip();
+    } catch (error) {
+      console.error("Error refreshing description:", error);
+      alert("Failed to refresh description. Please try again.");
+    } finally {
+      setRefreshingActivities(prev => ({ ...prev, [key]: false }));
     }
   };
 
@@ -1520,9 +1541,23 @@ function ViewTrip() {
                                   >
                                     <p className="font-semibold text-gray-800 mb-1">{a.activity}</p>
 
-                                    <p className="text-sm text-gray-600 mb-2 mt-4 pr-6">
-                                      {a.description}
-                                    </p>
+                                    <div className="relative group">
+                                      <p className="text-sm text-gray-600 mb-2 mt-4 pr-10">
+                                        {a.description}
+                                      </p>
+                                      
+                                      <button
+                                        onClick={() => handleRefreshDescription(day.day, period, i)}
+                                        disabled={refreshingActivities[`${day.day}-${period}-${i}`]}
+                                        className="absolute -right-2 top-0 p-2 text-gray-400 hover:text-blue-600 rounded-full hover:bg-blue-50 transition-all opacity-0 group-hover:opacity-100 disabled:opacity-100 disabled:text-blue-600"
+                                        title="Reload Details"
+                                      >
+                                        <RefreshCw 
+                                          size={16} 
+                                          className={refreshingActivities[`${day.day}-${period}-${i}`] ? "animate-spin" : ""} 
+                                        />
+                                      </button>
+                                    </div>
 
                                     <div className="flex flex-wrap gap-3 text-xs text-gray-500 mb-2">
                                       {a.startTime && (
@@ -1943,40 +1978,56 @@ function ViewTrip() {
 
               <div className="space-y-3">
                 {conflictActivities.map((act) => (
-                  <label 
+                  <div 
                     key={`${act.originalPeriod}-${act.originalIndex}`} 
-                    className={`flex items-start gap-4 p-4 rounded-xl border-2 transition-all cursor-pointer shadow-sm
+                    className={`flex flex-col gap-2 p-4 rounded-xl border-2 transition-all shadow-sm
                       ${selectedKeeps[act.activity] 
                         ? 'border-blue-500 bg-blue-50/50' 
-                        : 'border-gray-200 bg-white opacity-60 grayscale-[50%]'}`}
+                        : 'border-gray-200 bg-white opacity-80'}`}
                   >
-                    <div className="pt-0.5">
-                      <input 
-                        type="checkbox" 
-                        checked={selectedKeeps[act.activity] || false}
-                        onChange={(e) => {
-                          setSelectedKeeps(prev => ({ ...prev, [act.activity]: e.target.checked }));
-                        }}
-                        className="w-5 h-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer"
-                      />
-                    </div>
-                    <div className="flex-1">
-                      <div className="font-bold text-gray-800 mb-1 leading-tight">{act.activity}</div>
-                      <div className="flex items-center gap-3 text-xs text-gray-500 font-medium">
-                        <span className="flex items-center gap-1 capitalize">
-                          {getPeriodIcon(act.originalPeriod)} {act.originalPeriod}
-                        </span>
-                        {act.duration && (
-                          <span className="flex items-center gap-1">⏱ {act.duration}</span>
-                        )}
-                        {act.priority && (
-                          <span className="px-2 py-0.5 bg-gray-100 rounded-md">
-                            Priority: {act.priority}
-                          </span>
-                        )}
+                    <div className="flex items-start gap-3">
+                      <div className="pt-0.5 cursor-pointer" onClick={() => setSelectedKeeps(prev => ({ ...prev, [act.activity]: !prev[act.activity] }))}>
+                        <input 
+                          type="checkbox" 
+                          checked={selectedKeeps[act.activity] || false}
+                          onChange={(e) => {
+                            setSelectedKeeps(prev => ({ ...prev, [act.activity]: e.target.checked }));
+                          }}
+                          className="w-5 h-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500 cursor-pointer pointer-events-none"
+                        />
                       </div>
+                      <div className="flex-1 cursor-pointer" onClick={() => setSelectedKeeps(prev => ({ ...prev, [act.activity]: !prev[act.activity] }))}>
+                        <div className="font-bold text-gray-800 mb-1 leading-tight">{act.activity}</div>
+                        <div className="flex items-center flex-wrap gap-2 text-xs text-gray-500 font-medium">
+                          <span className="flex items-center gap-1 capitalize">
+                            {getPeriodIcon(act.originalPeriod)} {act.originalPeriod}
+                          </span>
+                          {act.duration && (
+                            <span className="flex items-center gap-1 bg-gray-100 px-1.5 py-0.5 rounded">⏱ {act.duration}</span>
+                          )}
+                          <span className="px-1.5 py-0.5 bg-gray-100 rounded">
+                            Priority: {act.priority || 'medium'}
+                          </span>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => {
+                          setShowConflictModal(false);
+                          setActiveEdit({
+                            day: activeDelayOptions.dayNumber,
+                            period: act.originalPeriod,
+                            activity: act,
+                            activityIndex: act.originalIndex,
+                          });
+                        }}
+                        className="flex items-center gap-1 px-3 py-1.5 bg-blue-100 text-blue-700 rounded-lg text-sm font-semibold hover:bg-blue-200 transition-all shrink-0 mt-0.5"
+                        title="Replace this activity instead of dropping it"
+                      >
+                        <Replace size={14} />
+                        Replace
+                      </button>
                     </div>
-                  </label>
+                  </div>
                 ))}
               </div>
             </div>

@@ -217,12 +217,14 @@ export function allocateBudget({ totalBudget, days, budget, travelWith, hotels =
 export function estimateActivityCost(activityName, budget, estimatedCostFromGemini) {
     // Priority: Always trust Gemini's dynamic estimate (which includes entry fees + rentals)
     if (typeof estimatedCostFromGemini === 'number') {
-        const key = normalizeBudgetKey(budget);
+        let key = normalizeBudgetKey(budget);
+        if (key === "cheap") key = "budget"; // Map 'cheap' trip budget to 'budget' activity cost tier
         return { estimatedCost: estimatedCostFromGemini, costTier: key };
     }
 
     const name = (activityName || "").toLowerCase();
-    const key = normalizeBudgetKey(budget);
+    let key = normalizeBudgetKey(budget);
+    if (key === "cheap") key = "budget"; // Map 'cheap' trip budget to 'budget' activity cost tier
 
     // Free activities
     if (/park|beach|lake|river|viewpoint|sunrise|sunset|garden|walk|promenade/i.test(name)) {

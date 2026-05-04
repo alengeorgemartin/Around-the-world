@@ -67,7 +67,8 @@ export async function callGemini(prompt, systemMessage = '', options = {}) {
         maxOutputTokens = 3000, // Google uses maxOutputTokens
         jsonMode = false,
         useCache = true,
-        operationName = 'general-generation'
+        operationName = 'general-generation',
+        responseSchema = null
     } = options;
 
     // Caching Layer
@@ -96,6 +97,9 @@ export async function callGemini(prompt, systemMessage = '', options = {}) {
 
         if (jsonMode) {
             config.responseMimeType = 'application/json';
+            if (responseSchema) {
+                config.responseSchema = responseSchema;
+            }
         }
 
         const response = await ai.models.generateContent({

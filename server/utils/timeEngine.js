@@ -120,6 +120,11 @@ export function normalizeActivity(activity, period, index) {
         ? activity.durationMinutes
         : parseDurationToMinutes(activity.duration, 90);
 
+    // Parse closing time
+    const closeMinutes = activity.timeWindow && activity.timeWindow.close
+        ? parseTimeToMinutes(activity.timeWindow.close, 22 * 60)
+        : 22 * 60; // Default 10:00 PM
+
     // Determine priority and flexibility
     const priority = activity.priority || "medium";
     const isFlexible = priority !== "high" && priority !== "must";
@@ -131,6 +136,7 @@ export function normalizeActivity(activity, period, index) {
         startMinutes,
         durationMinutes,
         endMinutes: startMinutes + durationMinutes,
+        closeMinutes,
         priority,
         isFlexible,
         isSkipped: activity.status === "skipped",
@@ -248,18 +254,40 @@ export function applyDelay(timeline, delayMinutes, currentTime = null) {
 export function detectConflicts(timeline) {
     const conflicts = [];
 
-    for (let i = 0; i < timeline.length - 1; i++) {
+    for (let i = 0; i < timeline.length; i++) {
         const current = timeline[i];
-        const next = timeline[i + 1];
 
-        if (current.endMinutes > next.startMinutes) {
+        // 1. Check if it exceeds closing time
+        if (current.endMinutes > current.closeMinutes) {
             conflicts.push({
+                type: 'closing_time',
                 currentIndex: i,
-                nextIndex: i + 1,
-                overlapMinutes: current.endMinutes - next.startMinutes,
+                overlapMinutes: current.endMinutes - current.closeMinutes,
+                isHardConflict: current.startMinutes >= current.closeMinutes
             });
+            continue;
+        }
+
+        // 2. Check overlap
+        if (i < timeline.length - 1) {
+            const next = timeline[i + 1];
+            if (current.endMinutes > next.startMinutes) {
+                conflicts.push({
+                    type: 'overlap',
+                    currentIndex: i,
+                    nextIndex: i + 1,
+                    overlapMinutes: current.endMinutes - next.startMinutes,
+                });
+            }
         }
     }
+
+    // Sort: prioritize hard closing time conflicts first, then overlaps
+    conflicts.sort((a, b) => {
+        if (a.isHardConflict && !b.isHardConflict) return -1;
+        if (!a.isHardConflict && b.isHardConflict) return 1;
+        return b.overlapMinutes - a.overlapMinutes;
+    });
 
     return conflicts;
 }
@@ -290,10 +318,39 @@ export function resolveConflicts(timeline, options = {}) {
         iterations++;
         const conflict = conflicts[0];
         const current = timeline[conflict.currentIndex];
-        const next = timeline[conflict.nextIndex];
         const overlapMinutes = conflict.overlapMinutes;
 
         let resolved = false;
+
+        // Handle closing time conflicts separately
+        if (conflict.type === 'closing_time') {
+            if (conflict.isHardConflict || current.durationMinutes - overlapMinutes < minDuration) {
+                current.isSkipped = true;
+                current.status = "skipped";
+                changes.removed.push({
+                    activity: current.activity,
+                    reason: "Exceeds closing time",
+                    priority: current.priority,
+                    conflictType: "closing_time"
+                });
+                resolved = true;
+            } else {
+                // Compress to fit
+                const reduction = overlapMinutes;
+                const oldDuration = current.durationMinutes;
+                current.durationMinutes -= reduction;
+                current.endMinutes -= reduction;
+
+                changes.compressed.push({
+                    activity: current.activity,
+                    oldDuration,
+                    newDuration: current.durationMinutes,
+                    savedMinutes: reduction,
+                });
+                resolved = true;
+            }
+        } else {
+            const next = timeline[conflict.nextIndex];
 
         // Strategy 1: Compress flexible activity
         if (current.isFlexible && current.durationMinutes > minDuration) {
@@ -378,6 +435,8 @@ export function resolveConflicts(timeline, options = {}) {
                 priority: current.priority,
             });
         }
+        
+        } // End of else block for overlap conflicts
 
         // Recheck conflicts
         conflicts = detectConflicts(timeline);

@@ -208,12 +208,35 @@ Context:
 Return ONLY the JSON. No explanations.
 `;
 
+    const activitySchema = {
+      type: "object",
+      properties: {
+        activity: { type: "string" },
+        address: { type: "string" },
+        description: { type: "string" },
+        placeUrl: { type: "string" },
+        startTime: { type: "string" },
+        duration: { type: "string" },
+        timeWindow: {
+          type: "object",
+          properties: {
+            open: { type: "string" },
+            close: { type: "string" }
+          }
+        },
+        durationMinutes: { type: "number" },
+        estimatedCost: { type: "number" }
+      },
+      required: ["activity", "address", "description", "placeUrl", "startTime", "duration", "timeWindow", "durationMinutes", "estimatedCost"]
+    };
+
     try {
       const aiResponse = await callGemini(prompt, undefined, {
         maxOutputTokens: 1000,
         jsonMode: true,
         operationName: 'fillActivityDetails',
-        useCache: attempt === 1
+        useCache: attempt === 1,
+        responseSchema: activitySchema
       });
       const parsed = extractJSON(aiResponse);
 
@@ -1096,6 +1119,76 @@ export const replaceActivity = async (req, res) => {
   } catch (err) {
     console.error("❌ Replace error:", err.message);
     res.status(500).json({ success: false });
+  }
+};
+
+/* ---------- REFRESH ACTIVITY DETAILS ---------- */
+export const refreshActivityDetails = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { day, period, activityIndex } = req.body;
+
+    const trip = await Trip.findById(id);
+    if (!trip) return res.status(404).json({ success: false, message: "Trip not found" });
+
+    if (trip.userId.toString() !== req.user.id && req.user.role !== "admin")
+      return res.status(403).json({ success: false, message: "Not authorized" });
+
+    const dayObj = trip.itinerary.find(d => d.day === day);
+    if (!dayObj || !dayObj[period] || !dayObj[period][activityIndex]) {
+      return res.status(400).json({ success: false, message: "Invalid activity path" });
+    }
+
+    const currentActivity = dayObj[period][activityIndex];
+    if (!currentActivity.activity) {
+       return res.status(400).json({ success: false, message: "Activity name missing" });
+    }
+
+    const preferenceBias = buildPreferenceBias(trip.preferences);
+
+    console.log(`🔄 Refreshing details for "${currentActivity.activity}" on Day ${day} ${period}`);
+
+    // Re-run fillActivityDetails
+    const enriched = await fillActivityDetails({
+      activityName: currentActivity.activity,
+      location: trip.location,
+      period,
+      budget: trip.budget,
+      travelWith: trip.travelWith,
+      preferenceBias,
+    });
+
+    // Retain original geocoding if new one fails 
+    const newGeo = await geocodePlace(enriched.activity, trip.location);
+    enriched.geo = newGeo || currentActivity.geo;
+
+    // Budget cost estimate
+    const { estimatedCost, costTier } = estimateActivityCost(enriched.activity, trip.budget, enriched.estimatedCost);
+    enriched.estimatedCost = estimatedCost;
+    enriched.costTier = costTier;
+
+    // Save back to DB
+    dayObj[period][activityIndex] = {
+      ...currentActivity.toObject(),
+      address: enriched.address || currentActivity.address,
+      description: enriched.description,
+      placeUrl: enriched.placeUrl || currentActivity.placeUrl,
+      startTime: enriched.startTime || currentActivity.startTime,
+      duration: enriched.duration || currentActivity.duration,
+      durationMinutes: enriched.durationMinutes || currentActivity.durationMinutes,
+      timeWindow: enriched.timeWindow || currentActivity.timeWindow,
+      estimatedCost: enriched.estimatedCost,
+      costTier: enriched.costTier,
+      geo: enriched.geo
+    };
+
+    await trip.save();
+    console.log(`✅ Refreshed details saved for: "${currentActivity.activity}"`);
+
+    res.json({ success: true, data: trip });
+  } catch (err) {
+    console.error("❌ Refresh details error:", err.message);
+    res.status(500).json({ success: false, message: err.message });
   }
 };
 
