@@ -396,7 +396,12 @@ Do NOT include quotes, JSON formatting, descriptions, or any extra text.
       topActivity = parsed.activity;
     }
 
-    if (topActivity && topActivity !== currentActivity && !topActivity.toLowerCase().includes("alternative near")) {
+    if (
+      topActivity &&
+      topActivity.length >= 5 &&
+      topActivity !== currentActivity &&
+      !topActivity.toLowerCase().includes("alternative near")
+    ) {
       return { activity: topActivity };
     }
   }
@@ -1054,7 +1059,7 @@ Seed: ${seed}
 export const replaceActivity = async (req, res) => {
   try {
     const { id } = req.params;
-    const { day, period, currentActivity, preferenceHint, activityIndex } = req.body;
+    const { day, period, currentActivity, preferenceHint, activityIndex, activityName: explicitActivityName } = req.body;
 
     const trip = await Trip.findById(id);
     if (!trip) return res.status(404).json({ success: false });
@@ -1065,7 +1070,7 @@ export const replaceActivity = async (req, res) => {
     const preferenceBias = buildPreferenceBias(trip.preferences);
     const dayObj = trip.itinerary.find(d => d.day === day);
 
-    // Validate period and index, with a fallback to 0 for older clients
+    // Validate period and index
     if (!dayObj || !dayObj[period]) {
         return res.status(400).json({ success: false, message: "Invalid day or period" });
     }
@@ -1074,21 +1079,29 @@ export const replaceActivity = async (req, res) => {
         return res.status(400).json({ success: false, message: "Invalid activity index" });
     }
 
-    // Step 1: Get an alternative activity name
-    const alternative = await generateAlternativeActivity({
-      location: trip.location,
-      currentActivity,
-      period,
-      preferenceBias: preferenceHint
-        ? `${preferenceBias}. ${preferenceHint}`
-        : preferenceBias,
-    });
+    let activityName = explicitActivityName;
 
-    let activityName = alternative?.activity;
+    // Only generate alternative if we don't have an explicit name
     if (!activityName) {
-      // Deep fallback if AI completely fails to give an alternative. 
-      const shortLocation = trip.location.split(',')[0].trim();
-      activityName = `A popular tourist attraction in ${shortLocation}`;
+      const alternative = await generateAlternativeActivity({
+        location: trip.location,
+        currentActivity,
+        period,
+        preferenceBias: preferenceHint
+          ? `${preferenceBias}. ${preferenceHint}`
+          : preferenceBias,
+      });
+
+      activityName = alternative?.activity;
+    }
+
+    if (!activityName || activityName.trim().length < 5) {
+      // AI returned nothing useful (e.g. a single letter, empty string, etc.)
+      console.warn(`⚠️ generateAlternativeActivity returned an invalid name: "${activityName}". Aborting replacement.`);
+      return res.status(422).json({
+        success: false,
+        message: `No replacement for "${preferenceHint || 'the selected preference'}" is currently available. The original activity has been kept.`
+      });
     }
     console.log(`🔄 Replacing "${currentActivity}" with "${activityName}" on Day ${day} ${period}`);
 

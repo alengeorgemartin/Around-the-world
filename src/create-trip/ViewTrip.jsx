@@ -417,26 +417,30 @@ function ViewTrip() {
   }, [trip, selectedDay]);
 
   /* ---------------- ACTIONS ---------------- */
-  const replaceActivity = async (strategyHint) => {
-    if (!activeEdit) return;
+  const replaceActivity = async (strategyHint, explicitName = null, customContext = null) => {
+    const contextToUse = customContext || activeEdit;
+    if (!contextToUse) return;
 
     setLoadingAI(true);
     try {
       await api.post(`/trip/${id}/replace-activity`, {
-        day: activeEdit.day,
-        period: activeEdit.period,
-        currentActivity: activeEdit.activity.activity,
+        day: contextToUse.day,
+        period: contextToUse.period,
+        currentActivity: contextToUse.activity.activity,
         preferenceHint: strategyHint,
-        activityIndex: activeEdit.activityIndex,
+        activityName: explicitName,
+        activityIndex: contextToUse.activityIndex,
       });
 
       await fetchTrip();
-    } catch (error) {
-      console.error("Error replacing activity:", error);
-      alert("Failed to replace activity. Please try again.");
-    } finally {
       setActiveEdit(null);
       setCustomPreference("");
+    } catch (error) {
+      console.error("Error replacing activity:", error);
+      // Do NOT roll back — just show a clear message
+      const preference = explicitName || strategyHint || "the selected preference";
+      alert(`No replacement for "${preference}" is available at this time. The original activity has been kept.`);
+    } finally {
       setLoadingAI(false);
     }
   };
@@ -542,14 +546,27 @@ function ViewTrip() {
     setSmartSuggestions([]);
     setActiveSmartSuggestion({ day, period, activityIndex });
 
-    const res = await api.post(`/trip/${id}/smart-adjustment`, {
-      day,
-      period,
-      context: "time based",
-    });
+    try {
+      const res = await api.post(`/trip/${id}/smart-adjustment`, {
+        day,
+        period,
+        context: "time based",
+      });
 
-    setSmartSuggestions(res.data.suggestions || []);
-    setLoadingSmart(false);
+      const suggestions = res.data.suggestions || [];
+      if (suggestions.length === 0) {
+        alert("No better alternatives found for this time slot right now.");
+        setActiveSmartSuggestion(null);
+      } else {
+        setSmartSuggestions(suggestions);
+      }
+    } catch (error) {
+      console.error("Error fetching smart suggestions:", error);
+      alert("Failed to get better options. Please try again.");
+      setActiveSmartSuggestion(null);
+    } finally {
+      setLoadingSmart(false);
+    }
   };
 
   /* ---------------- DRAG AND DROP ---------------- */
@@ -1735,13 +1752,23 @@ function ViewTrip() {
                                               </span>
 
                                               <button
-                                                onClick={() =>
-                                                  addActivity(day.day, period, s)
-                                                }
-                                                className="flex items-center gap-1 px-2 py-1 bg-green-500 text-white rounded-md text-xs font-medium hover:bg-green-600 transition-colors whitespace-nowrap"
+                                                onClick={() => {
+                                                  const context = {
+                                                    day: activeSmartSuggestion.day,
+                                                    period: activeSmartSuggestion.period,
+                                                    activity: a,
+                                                    activityIndex: activeSmartSuggestion.activityIndex,
+                                                    prefillHint: s.activity,
+                                                  };
+                                                  setSmartSuggestions([]);
+                                                  setActiveSmartSuggestion(null);
+                                                  // Pass the name as both hint and explicit name to skip suggestion logic
+                                                  replaceActivity(s.activity, s.activity, context);
+                                                }}
+                                                className="flex items-center gap-1 px-2 py-1 bg-orange-500 text-white rounded-md text-xs font-medium hover:bg-orange-600 transition-colors whitespace-nowrap"
                                               >
-                                                <Plus size={12} />
-                                                Add
+                                                <Replace size={12} />
+                                                Use This
                                               </button>
                                             </div>
                                           ))}

@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import '../styles/Profile.css';
 import BusinessRegistrationModal from '../components/BusinessRegistrationModal';
+import PhotoCarousel from '../components/PhotoCarousel';
 import ManageBookings from './ManageBookings';
 import UserBookings from './UserBookings';
 import api from '../utils/api';
@@ -404,7 +405,7 @@ const Profile = () => {
             
             {user.profilePhoto ? (
               <img 
-                src={`http://localhost:5000${user.profilePhoto}`} 
+                src={user.profilePhoto.startsWith('http') ? user.profilePhoto : `http://127.0.0.1:5000${user.profilePhoto}`} 
                 alt="Profile" 
                 style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
               />
@@ -724,6 +725,18 @@ const Profile = () => {
                           )}
                         </div>
                       </div>
+
+                      {/* Business Photo Carousel */}
+                      {business.photos && business.photos.length > 0 && (
+                        <div style={{ borderRadius: '8px', overflow: 'hidden', marginBottom: '12px' }}>
+                          <PhotoCarousel
+                            photos={business.photos}
+                            alt={business.name}
+                            height="160px"
+                            borderRadius="8px"
+                          />
+                        </div>
+                      )}
 
                       <h3>{business.name}</h3>
                       <p className="business-type">

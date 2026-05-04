@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../utils/api";
+import PhotoCarousel from "../components/PhotoCarousel";
 import "../styles/Rentals.css";
 
 // Extra static car packages using uploaded images
@@ -18,6 +19,7 @@ const Rentals = () => {
     const [rentals, setRentals] = useState([]);
     const [loading, setLoading] = useState(true);
     const [filter, setFilter] = useState("All");
+    const [searchQuery, setSearchQuery] = useState("");
 
     // Booking form state
     const [pickupDate, setPickupDate] = useState('');
@@ -115,9 +117,23 @@ const Rentals = () => {
         fetchRentals();
     }, []);
 
-    const filteredRentals = filter === "All"
-        ? rentals
-        : rentals.filter(rental => rental.priceRange === filter);
+    const filteredRentals = rentals.filter(rental => {
+        const matchesFilter = filter === "All" || rental.priceRange === filter;
+        const q = searchQuery.toLowerCase();
+        const matchesSearch = !q ||
+            rental.name?.toLowerCase().includes(q) ||
+            rental.rentalDetails?.vehicleType?.toLowerCase().includes(q) ||
+            rental.location?.city?.toLowerCase().includes(q) ||
+            rental.rentalDetails?.model?.toLowerCase().includes(q);
+        return matchesFilter && matchesSearch;
+    });
+
+    const filteredExtraCars = EXTRA_CARS.filter(car => {
+        const q = searchQuery.toLowerCase();
+        return !q ||
+            car.name?.toLowerCase().includes(q) ||
+            car.vehicleType?.toLowerCase().includes(q);
+    });
 
     if (selectedRental) {
         return (
@@ -132,10 +148,12 @@ const Rentals = () => {
                     <div className="rd-content-grid">
                         {/* Left Column */}
                         <div className="rd-left-col">
-                            <img
-                                src={selectedRental.photos?.[0]}
+                            <PhotoCarousel
+                                photos={selectedRental.photos}
+                                fallback={`https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?auto=format&fit=crop&w=800&q=80`}
                                 alt={selectedRental.name}
-                                className="rd-main-img"
+                                height="340px"
+                                borderRadius="12px"
                             />
 
                             <h1 className="rd-car-name">{selectedRental.name}</h1>
@@ -270,11 +288,13 @@ const Rentals = () => {
                             <i className="fas fa-map-marker-alt" style={{ color: '#ffa500' }}></i>
                             <input
                                 type="text"
-                                placeholder="Enter starting point..."
+                                placeholder="Search by vehicle name, type..."
                                 className="hero-search-input"
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
                             />
                         </div>
-                        <button className="hero-search-btn">Search Vehicles</button>
+                        <button className="hero-search-btn" onClick={() => {}}>Search Vehicles</button>
                     </div>
                 </div>
             </div>
@@ -299,7 +319,12 @@ const Rentals = () => {
                         filteredRentals.map((rental) => (
                             <div className="car-card-dark" key={rental._id} onClick={() => setSelectedRental(rental)}>
                                 <div className="card-image-top">
-                                    <img src={rental.photos?.[0] || 'https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?auto=format&fit=crop&w=600&q=80'} alt={rental.name} />
+                                    <PhotoCarousel
+                                        photos={rental.photos}
+                                        fallback={'https://images.unsplash.com/photo-1549317661-bd32c8ce0db2?auto=format&fit=crop&w=600&q=80'}
+                                        alt={rental.name}
+                                        height="200px"
+                                    />
                                     <div className="price-tag-overlay">${rental.pricePerDay || 2000}</div>
                                 </div>
                                 <div className="card-content-bottom">
@@ -334,7 +359,7 @@ const Rentals = () => {
                     )}
 
                     {/* EXTRA STATIC CAR PACKAGES */}
-                    {EXTRA_CARS.map((car) => (
+                    {filteredExtraCars.map((car) => (
                         <div className="car-card-dark" key={car.id} onClick={() => setSelectedRental({
                             _id: car.id, name: car.name, photos: [car.photo],
                             pricePerDay: car.pricePerDay, description: car.desc,

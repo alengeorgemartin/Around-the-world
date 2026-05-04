@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../utils/api";
+import PhotoCarousel from "../components/PhotoCarousel";
 import "../styles/Packages.css";
 
 const Packages = () => {
@@ -35,6 +36,7 @@ const Packages = () => {
                         price: `₹${b.pricePerDay || 0}`,
                         originalPrice: `₹${Math.floor((b.pricePerDay || 0) * 1.2)}`,
                         rawPrice: b.pricePerDay || 0,
+                        photos: b.photos && b.photos.length > 0 ? b.photos : null,
                         image: b.photos?.[0] || '1534751516642-a1af1ef26a56',
                         rating: b.stats?.averageRating || 4.5,
                         reviews: b.stats?.reviewCount || 10,
@@ -180,9 +182,11 @@ const Packages = () => {
                         {currentPackages.map((pkg) => (
                         <div className="package-card" key={pkg.id}>
                             <div className="package-image-container">
-                                <img
-                                    src={pkg.image.includes('http') ? pkg.image : `https://images.unsplash.com/photo-${pkg.image}?auto=format&fit=crop&w=600&q=80`}
+                                <PhotoCarousel
+                                    photos={pkg.photos}
+                                    fallback={pkg.image.includes('http') ? pkg.image : `https://images.unsplash.com/photo-${pkg.image}?auto=format&fit=crop&w=600&q=80`}
                                     alt={pkg.title}
+                                    height="220px"
                                 />
                                 <span className="package-badge">{pkg.category}</span>
                                 <div className="package-discount">
@@ -259,10 +263,12 @@ const Packages = () => {
                             <i className="fa-solid fa-times"></i>
                         </button>
 
-                        <img
-                            src={selectedPackage.image.includes('http') ? selectedPackage.image : `https://images.unsplash.com/photo-${selectedPackage.image}?auto=format&fit=crop&w=800&q=80`}
+                        <PhotoCarousel
+                            photos={selectedPackage.photos}
+                            fallback={selectedPackage.image.includes('http') ? selectedPackage.image : `https://images.unsplash.com/photo-${selectedPackage.image}?auto=format&fit=crop&w=800&q=80`}
                             alt={selectedPackage.title}
-                            className="modal-image"
+                            height="280px"
+                            borderRadius="12px 12px 0 0"
                         />
 
                         <div className="modal-body">

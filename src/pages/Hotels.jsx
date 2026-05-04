@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../utils/api";
+import PhotoCarousel from "../components/PhotoCarousel";
 import "../styles/Hotels.css";
 
 const Hotels = () => {
@@ -74,9 +75,11 @@ const Hotels = () => {
                         filteredHotels.map((hotel) => (
                             <div className="hotel-card" key={hotel._id}>
                                 <div className="hotel-image-container">
-                                    <img
-                                        src={hotel.photos?.[0] || `https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=600&q=80`}
+                                    <PhotoCarousel
+                                        photos={hotel.photos}
+                                        fallback={`https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=600&q=80`}
                                         alt={hotel.name}
+                                        height="220px"
                                     />
                                     <span className="hotel-badge">{hotel.priceRange}</span>
                                     {hotel.hotelDetails?.rooms && hotel.hotelDetails.rooms.length > 0 && (
@@ -144,10 +147,12 @@ const Hotels = () => {
                             <i className="fa-solid fa-times"></i>
                         </button>
 
-                        <img
-                            src={selectedHotel.photos?.[0] || `https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=800&q=80`}
+                        <PhotoCarousel
+                            photos={selectedHotel.photos}
+                            fallback={`https://images.unsplash.com/photo-1566073771259-6a8506099945?auto=format&fit=crop&w=800&q=80`}
                             alt={selectedHotel.name}
-                            className="modal-image"
+                            height="300px"
+                            borderRadius="12px 12px 0 0"
                         />
 
                         <div className="modal-body">
