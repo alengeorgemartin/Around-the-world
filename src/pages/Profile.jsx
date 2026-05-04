@@ -38,6 +38,11 @@ const Profile = () => {
   const [businesses, setBusinesses] = useState([]);
   const [loadingBusinesses, setLoadingBusinesses] = useState(false);
   const [showBusinessModal, setShowBusinessModal] = useState(false);
+  const [editingBusiness, setEditingBusiness] = useState(null);
+
+  // Profile Photo Upload State
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const fileInputRef = useRef(null);
 
 
   const allPreferenceOptions = [
@@ -293,19 +298,85 @@ const Profile = () => {
   // Business registration handler
   const handleBusinessSubmit = async (formData) => {
     try {
-      const response = await api.post('/business/register', formData);
-
-      if (response.data.success) {
-        alert('Business registered successfully! Pending admin approval.');
-        setShowBusinessModal(false);
-        // Refresh businesses list
-        const refreshResponse = await api.get('/business/my-businesses');
-        setBusinesses(refreshResponse.data.data || []);
+      if (editingBusiness) {
+        const response = await api.put(`/business/${editingBusiness._id}`, formData);
+        if (response.data.success) {
+          alert('Business updated successfully!');
+          setShowBusinessModal(false);
+          setEditingBusiness(null);
+          // Refresh businesses list
+          const refreshResponse = await api.get('/business/my-businesses');
+          setBusinesses(refreshResponse.data.data || []);
+        }
+      } else {
+        const response = await api.post('/business/register', formData);
+        if (response.data.success) {
+          alert('Business registered successfully! Pending admin approval.');
+          setShowBusinessModal(false);
+          // Refresh businesses list
+          const refreshResponse = await api.get('/business/my-businesses');
+          setBusinesses(refreshResponse.data.data || []);
+        }
       }
     } catch (error) {
-      console.error('Error registering business:', error);
+      console.error('Error submitting business:', error);
       const errorMessage = error.response?.data?.message || 'An error occurred. Please try again.';
       alert(errorMessage);
+    }
+  };
+
+  const handleEditBusiness = (business) => {
+    setEditingBusiness(business);
+    setShowBusinessModal(true);
+  };
+
+  const handleDeleteBusiness = async (businessId) => {
+    if (window.confirm("Are you sure you want to delete this business? This action cannot be undone.")) {
+      try {
+        const response = await api.delete(`/business/${businessId}`);
+        if (response.data.success) {
+          alert("Business deleted successfully.");
+          setBusinesses(prev => prev.filter(b => b._id !== businessId));
+        }
+      } catch (error) {
+        console.error("Error deleting business:", error);
+        alert(error.response?.data?.message || "Failed to delete business.");
+      }
+    }
+  };
+
+  const handlePhotoUpload = async (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+       alert("Please upload an image file");
+       return;
+    }
+
+    const formData = new FormData();
+    formData.append('photo', file);
+
+    setUploadingPhoto(true);
+    try {
+      const response = await api.post('/upload/profile-photo', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      });
+
+      if (response.data.success) {
+        // Update user state
+        const updatedUser = { ...user, profilePhoto: response.data.profilePhoto };
+        setUser(updatedUser);
+        localStorage.setItem('user', JSON.stringify(updatedUser));
+        alert('Profile photo updated successfully!');
+      }
+    } catch (error) {
+      console.error('Error uploading photo:', error);
+      alert(error.response?.data?.message || 'Failed to upload photo');
+    } finally {
+      setUploadingPhoto(false);
     }
   };
 
@@ -320,8 +391,41 @@ const Profile = () => {
       {/* Modern Header */}
       <div className="profile-header-section">
         <div className="profile-user-card">
-          <div className="avatar-large">
-            <User size={50} />
+          <div 
+            className="avatar-large" 
+            style={{ position: 'relative', cursor: 'pointer', overflow: 'hidden' }}
+            onClick={() => fileInputRef.current?.click()}
+          >
+            {uploadingPhoto ? (
+               <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.5)', color: 'white', fontSize: '12px', fontWeight: 'bold', zIndex: 2 }}>
+                  Uploading...
+               </div>
+            ) : null}
+            
+            {user.profilePhoto ? (
+              <img 
+                src={`http://localhost:5000${user.profilePhoto}`} 
+                alt="Profile" 
+                style={{ width: '100%', height: '100%', objectFit: 'cover' }} 
+              />
+            ) : (
+              <User size={50} />
+            )}
+            
+            <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, background: 'rgba(0,0,0,0.6)', padding: '5px', textAlign: 'center', opacity: 0, transition: 'opacity 0.2s', display: 'flex', justifyContent: 'center', alignItems: 'center' }}
+                 onMouseEnter={(e) => e.currentTarget.style.opacity = 1}
+                 onMouseLeave={(e) => e.currentTarget.style.opacity = 0}
+            >
+               <Camera size={16} color="white" />
+            </div>
+
+            <input 
+              type="file" 
+              ref={fileInputRef} 
+              style={{ display: 'none' }} 
+              accept="image/*"
+              onChange={handlePhotoUpload}
+            />
           </div>
           <div className="user-details-header">
             <h1>{user.name}</h1>
@@ -573,7 +677,10 @@ const Profile = () => {
                 </h2>
                 <button
                   className="register-business-btn text-white"
-                  onClick={() => setShowBusinessModal(true)}
+                  onClick={() => {
+                    setEditingBusiness(null);
+                    setShowBusinessModal(true);
+                  }}
                 >
                   <Plus size={18} />
                   Register Business
@@ -633,11 +740,11 @@ const Profile = () => {
                       </p>
 
                       <div className="business-actions">
-                        <button className="btn-edit" onClick={() => alert('Edit coming soon!')}>
+                        <button className="btn-edit" style={{ color: 'white' }} onClick={() => handleEditBusiness(business)}>
                           <Edit2 size={16} />
                           Edit
                         </button>
-                        <button className="btn-delete" onClick={() => alert('Delete coming soon!')}>
+                        <button className="btn-delete" style={{ color: 'white' }} onClick={() => handleDeleteBusiness(business._id)}>
                           <X size={16} />
                           Delete
                         </button>
@@ -667,8 +774,12 @@ const Profile = () => {
       {/* Business Registration Modal */}
       <BusinessRegistrationModal
         isOpen={showBusinessModal}
-        onClose={() => setShowBusinessModal(false)}
+        onClose={() => {
+          setShowBusinessModal(false);
+          setEditingBusiness(null);
+        }}
         onSubmit={handleBusinessSubmit}
+        initialData={editingBusiness}
       />
 
 

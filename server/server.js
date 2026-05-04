@@ -10,8 +10,11 @@ import businessRoutes from "./routes/businessRoutes.js";
 import reviewRoutes from "./routes/reviewRoutes.js";
 import bookingRoutes from "./routes/bookingRoutes.js";
 import runningLateRoutes from "./routes/runningLateRoutes.js";
+import uploadRoutes from "./routes/uploadRoutes.js";
 import { protect } from "./middleware/authMiddleware.js";
 import cookieParser from "cookie-parser";
+import path from "path";
+import { fileURLToPath } from "url";
 import User from "./models/User.js";
 import {
   replaceActivity,
@@ -41,6 +44,12 @@ app.use(bodyParser.json());
 
 app.use(cookieParser());
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Serve static files from the uploads directory
+app.use("/uploads", express.static(path.join(__dirname, "uploads")));
+
 // ====== MONGODB CONNECTION ======
 mongoose.connect(process.env.MONGO_URI, { dbName: "ai_trip_planner" })
   .then(() => console.log("✅ MongoDB connected"))
@@ -65,6 +74,7 @@ app.use("/api/business", businessRoutes);
 app.use("/api/reviews", reviewRoutes);
 app.use("/api/bookings", bookingRoutes);
 app.use("/api/running-late", runningLateRoutes);
+app.use("/api/upload", uploadRoutes);
 
 // Generate and save trip
 app.post(

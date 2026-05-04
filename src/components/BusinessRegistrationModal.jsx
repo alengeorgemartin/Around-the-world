@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
-import { X, Hotel, Car, Map, MapPin } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import { X, Hotel, Car, Map, MapPin, Upload } from 'lucide-react';
 import '../styles/BusinessModal.css';
+import api from '../utils/api';
 
-const BusinessRegistrationModal = ({ isOpen, onClose, onSubmit }) => {
+const BusinessRegistrationModal = ({ isOpen, onClose, onSubmit, initialData }) => {
     const [formData, setFormData] = useState({
         businessType: 'hotel',
         name: '',
@@ -46,6 +47,53 @@ const BusinessRegistrationModal = ({ isOpen, onClose, onSubmit }) => {
 
     const [amenities, setAmenities] = useState('');
     const [roomTypes, setRoomTypes] = useState('');
+    const [selectedFiles, setSelectedFiles] = useState([]);
+    const [uploadingPhotos, setUploadingPhotos] = useState(false);
+    const fileInputRef = useRef(null);
+
+    useEffect(() => {
+        if (isOpen && initialData) {
+            setFormData(initialData);
+            
+            if (initialData.businessType === 'hotel' && initialData.hotelDetails?.amenities) {
+                setAmenities(initialData.hotelDetails.amenities.join(', '));
+                
+                const formattedRooms = initialData.hotelDetails.rooms?.map(room => ({
+                    ...room,
+                    amenitiesStr: room.amenities ? room.amenities.join(', ') : ''
+                })) || [];
+                
+                setFormData(prev => ({
+                    ...prev,
+                    hotelDetails: {
+                        ...prev.hotelDetails,
+                        rooms: formattedRooms.length > 0 ? formattedRooms : [{ type: '', pricePerNight: '', capacity: 2, bedType: '', amenitiesStr: '', available: true }]
+                    }
+                }));
+            }
+            setSelectedFiles([]);
+        } else if (isOpen && !initialData) {
+            setFormData({
+                businessType: 'hotel',
+                name: '',
+                description: '',
+                location: { address: '', city: '', state: '' },
+                priceRange: 'moderate',
+                pricePerNight: '',
+                pricePerDay: '',
+                contact: { phone: '', email: '' },
+                hotelDetails: {
+                    starRating: 3,
+                    amenities: [],
+                    rooms: [{ type: '', pricePerNight: '', capacity: 2, bedType: '', amenitiesStr: '', available: true }],
+                },
+                rentalDetails: { vehicleType: '', model: '', capacity: 2 },
+                tourDetails: { tourType: '', duration: '', groupSize: '' },
+            });
+            setAmenities('');
+            setSelectedFiles([]);
+        }
+    }, [isOpen, initialData]);
 
     if (!isOpen) return null;
 
@@ -66,7 +114,7 @@ const BusinessRegistrationModal = ({ isOpen, onClose, onSubmit }) => {
         }
     };
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
 
         // Process data based on business type
@@ -91,6 +139,31 @@ const BusinessRegistrationModal = ({ isOpen, onClose, onSubmit }) => {
             processedData.hotelDetails.rooms.forEach(room => delete room.amenitiesStr);
         }
 
+        // Handle Photo Uploads First
+        if (selectedFiles.length > 0) {
+            setUploadingPhotos(true);
+            const uploadData = new FormData();
+            Array.from(selectedFiles).forEach(file => {
+                uploadData.append('photos', file);
+            });
+
+            try {
+                const response = await api.post('/upload/business-photos', uploadData, {
+                    headers: { 'Content-Type': 'multipart/form-data' }
+                });
+
+                if (response.data.success) {
+                    processedData.photos = [...(processedData.photos || []), ...response.data.photos];
+                }
+            } catch (error) {
+                console.error('Error uploading photos:', error);
+                alert(error.response?.data?.message || 'Failed to upload photos. Proceeding without them.');
+                processedData.photos = [];
+            } finally {
+                setUploadingPhotos(false);
+            }
+        }
+
         onSubmit(processedData);
     };
 
@@ -98,7 +171,7 @@ const BusinessRegistrationModal = ({ isOpen, onClose, onSubmit }) => {
         <div className="modal-overlay" onClick={onClose}>
             <div className="modal-content" onClick={(e) => e.stopPropagation()}>
                 <div className="modal-header">
-                    <h2>Register Your Business</h2>
+                    <h2>{initialData ? 'Edit Your Business' : 'Register Your Business'}</h2>
                     <button className="modal-close" onClick={onClose}>
                         <X size={24} />
                     </button>
@@ -542,13 +615,67 @@ const BusinessRegistrationModal = ({ isOpen, onClose, onSubmit }) => {
                         </div>
                     </div>
 
+                    {/* Business Photos */}
+                    <div className="form-section">
+                        <h3><Upload size={18} style={{display: 'inline', marginRight: '5px'}}/> Photos</h3>
+                        <div className="form-grid">
+                            <div className="form-group full-width">
+                                <label>Upload Business Photos (Max 10)</label>
+                                <input
+                                    type="file"
+                                    multiple
+                                    accept="image/*"
+                                    ref={fileInputRef}
+                                    onChange={(e) => {
+                                        const newFiles = Array.from(e.target.files);
+                                        setSelectedFiles(prev => [...prev, ...newFiles].slice(0, 10));
+                                        // Reset input so the same files can be selected again if needed
+                                        if (fileInputRef.current) fileInputRef.current.value = '';
+                                    }}
+                                    style={{
+                                        padding: '10px',
+                                        border: '1px dashed #ccc',
+                                        borderRadius: '8px',
+                                        width: '100%',
+                                        boxSizing: 'border-box'
+                                    }}
+                                />
+                                {selectedFiles.length > 0 && (
+                                    <div style={{ marginTop: '15px' }}>
+                                        <p style={{ fontSize: '14px', color: '#666', marginBottom: '10px' }}>
+                                            {selectedFiles.length} file(s) selected
+                                        </p>
+                                        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                                            {selectedFiles.map((file, index) => (
+                                                <div key={index} style={{ position: 'relative', width: '80px', height: '80px' }}>
+                                                    <img 
+                                                        src={URL.createObjectURL(file)} 
+                                                        alt="preview" 
+                                                        style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '8px', border: '1px solid #ddd' }} 
+                                                    />
+                                                    <button 
+                                                        type="button" 
+                                                        onClick={() => setSelectedFiles(prev => prev.filter((_, i) => i !== index))}
+                                                        style={{ position: 'absolute', top: -5, right: -5, background: '#ff4757', color: 'white', borderRadius: '50%', width: 20, height: 20, display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', cursor: 'pointer', padding: 0 }}
+                                                    >
+                                                        <X size={12} />
+                                                    </button>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+
                     {/* Submit */}
                     <div className="form-actions">
-                        <button type="button" className="btn-cancel" onClick={onClose}>
+                        <button type="button" className="btn-cancel" onClick={onClose} disabled={uploadingPhotos}>
                             Cancel
                         </button>
-                        <button type="submit" className="btn-submit">
-                            Register Business
+                        <button type="submit" className="btn-submit" disabled={uploadingPhotos}>
+                            {uploadingPhotos ? 'Uploading Photos...' : (initialData ? 'Update Business' : 'Register Business')}
                         </button>
                     </div>
                 </form>
